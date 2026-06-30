@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Nayel Basket - Exquisite Artisanal Home Decor, Luxury Furniture, and Spatial Curation. Elevating interior designs with state-of-the-art Generative AI space calibration." />
+    <meta name="keywords" content="eCommerce, Home Decor, Luxury Furniture, Lighting, Vases, Space Curation, Gemini AI, Interior Design, React, Tailwind CSS" />
+    <meta name="author" content="Nayel Basket Team" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Nayel Basket - Luxury Artisanal Home Decor Storefront" />
+    <meta property="og:description" content="Calibrate your living space with Gemini AI space planner, explore hand-crafted premium decor collections, and manage elite deliveries." />
+    <meta property="og:image" content="https://images.unsplash.com/photo-1612196808214-b8e1d6145a8c?auto=format&fit=crop&w=1200&q=80" />
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:title" content="Nayel Basket - Luxury Artisanal Home Decor Storefront" />
+    <meta property="twitter:description" content="Artisanal luxury home decor curation powered by Google Gemini-3.5." />
+    
+    <title>Nayel Basket - Premium Home Decor Shopping Experience</title>
+
+    <!-- Preconnect Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+    <!-- Premium CSS Preloader styles -->
+    <style>
+      #app-preloader {
+        position: fixed;
+        inset: 0;
+        background-color: #020617; /* bg-slate-950 */
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 99999;
+        font-family: 'Space Grotesk', sans-serif;
+        transition: opacity 0.5s ease-out, visibility 0.5s ease-out;
+      }
+      .loader-spinner {
+        width: 60px;
+        height: 60px;
+        border: 3px solid rgba(16, 185, 129, 0.1); /* emerald-500 opacity 0.1 */
+        border-radius: 50%;
+        border-top-color: #10b981; /* emerald-500 */
+        animation: spin 1s cubic-bezier(0.55, 0.055, 0.675, 0.19) infinite;
+      }
+      .loader-logo {
+        margin-top: 24px;
+        color: #ffffff;
+        font-size: 24px;
+        font-weight: 900;
+        letter-spacing: -0.05em;
+        text-transform: uppercase;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .loader-pulse {
+        color: #94a3b8; /* slate-400 */
+        font-size: 11px;
+        font-family: 'JetBrains Mono', monospace;
+        margin-top: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.15em;
+        opacity: 0.8;
+        animation: pulse 1.5s ease-in-out infinite;
+      }
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+      @keyframes pulse {
+        0%, 100% { opacity: 0.4; }
+        50% { opacity: 1; }
+      }
+    </style>
+  </head>
+  <body class="bg-slate-950 text-slate-100 antialiased selection:bg-emerald-500/20 selection:text-emerald-300">
+    <!-- Premium Preloader HTML -->
+    <div id="app-preloader">
+      <div class="loader-spinner"></div>
+      <div class="loader-logo">
+        <span style="color: #10b981;">◆</span> NAYEL BASKET
+      </div>
+      <div class="loader-pulse">Calibrating Space Configurations...</div>
+    </div>
+
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+
+    <script>
+      // Automatically fade out loader once standard React hydration completes
+      window.addEventListener('DOMContentLoaded', () => {
+        const preloader = document.getElementById('app-preloader');
+        if (preloader) {
+          setTimeout(() => {
+            preloader.style.opacity = '0';
+            preloader.style.visibility = 'hidden';
+            setTimeout(() => preloader.remove(), 500);
+          }, 600);
+        }
+      });
+    </script>
+  </body>
+</html>
+
