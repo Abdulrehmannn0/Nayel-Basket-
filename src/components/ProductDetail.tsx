@@ -161,14 +161,14 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product, onBack, o
   };
 
   return (
-    <div className="bg-white min-h-screen pb-24 relative animate-fade-in">
+    <div className="bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 min-h-screen pb-24 relative animate-fade-in">
       
       {/* Top Bar Actions */}
-      <div className="sticky top-16 z-30 bg-white/90 backdrop-blur-md border-b border-slate-100 py-4 px-4 sm:px-6 flex items-center justify-between">
+      <div className="sticky top-16 z-30 bg-white/90 dark:bg-slate-950/90 backdrop-blur-md border-b border-slate-100 dark:border-slate-800 py-4 px-4 sm:px-6 flex items-center justify-between">
         <button
           id="btn-back-detail"
           onClick={onBack}
-          className="flex items-center gap-1.5 text-xs font-bold text-black uppercase tracking-wider hover:opacity-75 transition cursor-pointer"
+          className="flex items-center gap-1.5 text-xs font-bold text-black dark:text-white uppercase tracking-wider hover:opacity-75 transition cursor-pointer"
         >
           <ChevronLeft className="h-4.5 w-4.5 stroke-[2.5]" />
           <span>Back to collection</span>

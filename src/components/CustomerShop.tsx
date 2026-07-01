@@ -46,7 +46,10 @@ import {
   Heart,
   Star,
   TrendingUp,
-  Flame
+  Flame,
+  Sun,
+  Moon,
+  Monitor
 } from "lucide-react";
 
 interface CustomerShopProps {
@@ -85,7 +88,11 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
     rewardPoints,
     recentlyViewed,
     addToRecentlyViewed,
-    addNotification
+    addNotification,
+    theme,
+    toggleTheme,
+    themePreference,
+    setThemePreference
   } = useApp();
 
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -2529,13 +2536,14 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
           </div>
 
           {/* LUXURY INTERACTIVE NAVIGATION SUBTABS (Zara/Airbnb Inspired) */}
-          <div className="flex gap-2 overflow-x-auto pb-2 border-b border-slate-100 scrollbar-hide">
+          <div className="flex gap-2 overflow-x-auto pb-2 border-b border-slate-100 dark:border-slate-800 scrollbar-hide">
             {[
               { id: "dashboard", label: "📊 Overview" },
               { id: "orders", label: "📦 Purchase History" },
               { id: "wishlist", label: "❤️ My Curations" },
               { id: "addresses", label: "📍 Delivery Addresses" },
               { id: "coupons", label: "🎫 Promos & Coupons" },
+              { id: "appearance", label: "🎨 Appearance" },
               { id: "ambassador", label: "🤝 Ambassador Program" },
               { id: "concierge", label: "💬 Bespoke Concierge" },
               { id: "notifications", label: "🔔 FCM Notifications" },

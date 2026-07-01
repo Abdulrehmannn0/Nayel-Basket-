@@ -134,11 +134,11 @@ function MainAppOrchestration() {
       </main>
 
       {/* Mobile Sticky Floating Bottom Navigation Bar */}
-      <div className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-md bg-white/80 backdrop-blur-xl border border-slate-100 rounded-3xl py-3 px-6 shadow-2xl flex items-center justify-between">
+      <div className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-md bg-white/85 dark:bg-slate-900/90 backdrop-blur-xl border border-slate-100 dark:border-slate-800 rounded-3xl py-3 px-6 shadow-2xl flex items-center justify-between">
         <button
           id="mobile-nav-home"
           onClick={() => setActiveSection("home")}
-          className={`flex flex-col items-center gap-1 cursor-pointer transition-all ${activeSection === "home" ? "text-black scale-105" : "text-slate-400 hover:text-slate-600"}`}
+          className={`flex flex-col items-center gap-1 cursor-pointer transition-all ${activeSection === "home" ? "text-black dark:text-white scale-105" : "text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"}`}
         >
           <HomeIcon className="h-4.5 w-4.5 stroke-[2]" />
           <span className="text-[9px] font-bold uppercase tracking-wider font-sans">Home</span>
@@ -147,7 +147,7 @@ function MainAppOrchestration() {
         <button
           id="mobile-nav-catalog"
           onClick={() => setActiveSection("categories")}
-          className={`flex flex-col items-center gap-1 cursor-pointer transition-all ${activeSection === "categories" ? "text-black scale-105" : "text-slate-400 hover:text-slate-600"}`}
+          className={`flex flex-col items-center gap-1 cursor-pointer transition-all ${activeSection === "categories" ? "text-black dark:text-white scale-105" : "text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"}`}
         >
           <Layers className="h-4.5 w-4.5 stroke-[2]" />
           <span className="text-[9px] font-bold uppercase tracking-wider font-sans">Catalog</span>
@@ -156,11 +156,11 @@ function MainAppOrchestration() {
         <button
           id="mobile-nav-wishlist"
           onClick={() => setActiveSection("wishlist")}
-          className={`flex flex-col items-center gap-1 cursor-pointer transition-all relative ${activeSection === "wishlist" ? "text-black scale-105" : "text-slate-400 hover:text-slate-600"}`}
+          className={`flex flex-col items-center gap-1 cursor-pointer transition-all relative ${activeSection === "wishlist" ? "text-black dark:text-white scale-105" : "text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"}`}
         >
           <Heart className="h-4.5 w-4.5 stroke-[2]" />
           {wishlistCount > 0 && (
-            <span className="absolute -top-1 -right-2 bg-neutral-900 text-white text-[8px] font-black px-1.5 py-0.2 rounded-full scale-90">
+            <span className="absolute -top-1 -right-2 bg-neutral-900 dark:bg-emerald-500 text-white dark:text-slate-950 text-[8px] font-black px-1.5 py-0.2 rounded-full scale-90">
               {wishlistCount}
             </span>
           )}
@@ -170,7 +170,7 @@ function MainAppOrchestration() {
         <button
           id="mobile-nav-cart"
           onClick={() => setActiveSection("cart")}
-          className={`flex flex-col items-center gap-1 cursor-pointer transition-all relative ${activeSection === "cart" ? "text-black scale-105" : "text-slate-400 hover:text-slate-600"}`}
+          className={`flex flex-col items-center gap-1 cursor-pointer transition-all relative ${activeSection === "cart" ? "text-black dark:text-white scale-105" : "text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"}`}
         >
           <ShoppingBag className="h-4.5 w-4.5 stroke-[2]" />
           {cartCount > 0 && (
@@ -184,7 +184,7 @@ function MainAppOrchestration() {
         <button
           id="mobile-nav-profile"
           onClick={() => setActiveSection("profile")}
-          className={`flex flex-col items-center gap-1 cursor-pointer transition-all ${activeSection === "profile" ? "text-black scale-105" : "text-slate-400 hover:text-slate-600"}`}
+          className={`flex flex-col items-center gap-1 cursor-pointer transition-all ${activeSection === "profile" ? "text-black dark:text-white scale-105" : "text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"}`}
         >
           <User className="h-4.5 w-4.5 stroke-[2]" />
           <span className="text-[9px] font-bold uppercase tracking-wider font-sans">Profile</span>
@@ -193,7 +193,7 @@ function MainAppOrchestration() {
         <button
           id="mobile-nav-ai"
           onClick={() => setActiveSection("ai")}
-          className={`flex flex-col items-center gap-1 cursor-pointer transition-all ${activeSection === "ai" ? "text-black scale-105" : "text-slate-400 hover:text-slate-600"}`}
+          className={`flex flex-col items-center gap-1 cursor-pointer transition-all ${activeSection === "ai" ? "text-black dark:text-white scale-105" : "text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"}`}
         >
           <Sparkles className="h-4.5 w-4.5 stroke-[2] text-[#34C759]" />
           <span className="text-[9px] font-bold uppercase tracking-wider font-sans text-[#34C759]">AI</span>

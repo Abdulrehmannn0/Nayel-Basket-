@@ -67,6 +67,8 @@ interface AppContextType {
   clearCompare: () => void;
   theme: "dark" | "light";
   toggleTheme: () => void;
+  themePreference: "light" | "dark" | "system";
+  setThemePreference: (pref: "light" | "dark" | "system") => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
 }
@@ -139,10 +141,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [compareProducts, setCompareProducts] = useState<Product[]>([]);
 
-  const [theme, setTheme] = useState<"dark" | "light">(() => {
-    const saved = localStorage.getItem("nb_theme");
-    return (saved as "dark" | "light") || "light"; // default to light as per prompt: "Default to a clean, high-contrast light theme"
+  const [themePreference, setThemePreference] = useState<"light" | "dark" | "system">(() => {
+    const saved = localStorage.getItem("nb_theme_pref");
+    return (saved as "light" | "dark" | "system") || "system";
   });
+
+  const [theme, setTheme] = useState<"dark" | "light">("light");
 
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -221,16 +225,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, []);
 
-  // Apply theme to document element
+  // Apply theme to document element based on themePreference
   useEffect(() => {
     const root = window.document.documentElement;
-    if (theme === "light") {
-      root.classList.remove("dark");
+    
+    const applyTheme = (active: "light" | "dark") => {
+      setTheme(active);
+      if (active === "light") {
+        root.classList.remove("dark");
+      } else {
+        root.classList.add("dark");
+      }
+      localStorage.setItem("nb_theme", active);
+    };
+
+    if (themePreference === "system") {
+      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+      const handleSystemThemeChange = (e: MediaQueryListEvent) => {
+        applyTheme(e.matches ? "dark" : "light");
+      };
+      
+      applyTheme(mediaQuery.matches ? "dark" : "light");
+      mediaQuery.addEventListener("change", handleSystemThemeChange);
+      
+      return () => {
+        mediaQuery.removeEventListener("change", handleSystemThemeChange);
+      };
     } else {
-      root.classList.add("dark");
+      applyTheme(themePreference);
     }
-    localStorage.setItem("nb_theme", theme);
-  }, [theme]);
+    
+    localStorage.setItem("nb_theme_pref", themePreference);
+  }, [themePreference]);
 
   // Save changes to localstorage to support persistent simulation
   useEffect(() => {
@@ -632,7 +658,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const clearCompare = () => setCompareProducts([]);
 
   const toggleTheme = () => {
-    setTheme((prev) => (prev === "dark" ? "light" : "dark"));
+    setThemePreference((prev) => (prev === "dark" ? "light" : "dark"));
   };
 
   return (
@@ -679,6 +705,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         clearCompare,
         theme,
         toggleTheme,
+        themePreference,
+        setThemePreference,
         searchQuery,
         setSearchQuery
       }}
