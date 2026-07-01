@@ -40,7 +40,13 @@ import {
   Copy,
   Bug,
   Activity,
-  Smartphone
+  Smartphone,
+  Mic,
+  Camera,
+  Heart,
+  Star,
+  TrendingUp,
+  Flame
 } from "lucide-react";
 
 interface CustomerShopProps {
@@ -146,6 +152,85 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
   const [telemetryLogs, setTelemetryLogs] = useState<string[]>(["[System] Telemetry initialized.", "[System] Supabase is primary backend."]);
   const [customEvent, setCustomEvent] = useState("");
   const [customEventParams, setCustomEventParams] = useState("");
+
+  // Advanced production state managers
+  const [isPersonalizedFeedActive, setIsPersonalizedFeedActive] = useState<boolean>(() => {
+    return localStorage.getItem("nb_personalized_feed") === "true";
+  });
+  const [showRazorpayModal, setShowRazorpayModal] = useState(false);
+  const [razorpayOrderTotal, setRazorpayOrderTotal] = useState(0);
+  const [razorpaySuccessCallback, setRazorpaySuccessCallback] = useState<(() => void) | null>(null);
+  
+  const [isVoiceSearching, setIsVoiceSearching] = useState(false);
+  const [showImageSearchDrawer, setShowImageSearchDrawer] = useState(false);
+  const [showCatalogScanner, setShowCatalogScanner] = useState(false);
+  const [scannedCatalogProduct, setScannedCatalogProduct] = useState<Product | null>(null);
+
+  // Premium Home Page States
+  const [activeVideoIndex, setActiveVideoIndex] = useState(0);
+  const [recentSearches, setRecentSearches] = useState<string[]>(() => {
+    const saved = localStorage.getItem("nb_recent_searches");
+    return saved ? JSON.parse(saved) : ["Ceramic", "European Oak", "Amber Candle", "Hand-blown Lighting", "Stoneware"];
+  });
+  const [showAiSearchPrompt, setShowAiSearchPrompt] = useState(false);
+  const [aiSearchQuery, setAiSearchQuery] = useState("");
+  const [aiSearchResultText, setAiSearchResultText] = useState("");
+  const [isAiSearchLoading, setIsAiSearchLoading] = useState(false);
+  const [countdownTime, setCountdownTime] = useState({ hours: 4, minutes: 34, seconds: 19 });
+
+  // Ticking countdown effect for Premium Flash Sale
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCountdownTime((prev) => {
+        if (prev.seconds > 0) {
+          return { ...prev, seconds: prev.seconds - 1 };
+        } else if (prev.minutes > 0) {
+          return { ...prev, minutes: prev.minutes - 1, seconds: 59 };
+        } else if (prev.hours > 0) {
+          return { hours: prev.hours - 1, minutes: 59, seconds: 59 };
+        } else {
+          return { hours: 4, minutes: 0, seconds: 0 }; // Loop back
+        }
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+  
+  const [showWhatsAppWidget, setShowWhatsAppWidget] = useState(false);
+  const [whatsAppInput, setWhatsAppInput] = useState("");
+  const [whatsAppHistory, setWhatsAppHistory] = useState<any[]>([
+    { sender: "desk", text: "Welcome to Nayel Basket Bespoke Desk. How may we assist your interior journey?", time: "Just now" }
+  ]);
+  
+  const [showAnalyticsNode, setShowAnalyticsNode] = useState(false);
+  const [analyticsMetrics, setAnalyticsMetrics] = useState<any>(() => {
+    const saved = localStorage.getItem("nb_behavior_analytics");
+    return saved ? JSON.parse(saved) : {
+      hovers: 0,
+      clicks: 0,
+      cartAdds: 0,
+      searches: 0,
+      viewTime: 0,
+      pageViews: 1,
+      uniqueInteractions: 1
+    };
+  });
+  
+  const [customPushNotification, setCustomPushNotification] = useState<any | null>(null);
+  const [activeTrackingOrder, setActiveTrackingOrder] = useState<Order | null>(null);
+
+  // Auto-track viewport analytics
+  useEffect(() => {
+    localStorage.setItem("nb_behavior_analytics", JSON.stringify(analyticsMetrics));
+  }, [analyticsMetrics]);
+
+  // Track page views or section changes
+  useEffect(() => {
+    setAnalyticsMetrics((prev: any) => ({
+      ...prev,
+      pageViews: (prev.pageViews || 0) + 1
+    }));
+  }, [activeSection]);
 
   // Checkout states
   const [checkoutAddressId, setCheckoutAddressId] = useState(addresses[0]?.id || "");
@@ -315,8 +400,28 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
       return;
     }
 
+    if (checkoutPayment === "Razorpay") {
+      setRazorpayOrderTotal(total);
+      setRazorpaySuccessCallback(() => {
+        return () => {
+          const placed = placeOrder(matchedAddress, "Razorpay");
+          setViewedOrder(placed);
+          // Auto-trigger simulated dispatch & tracking update
+          addNotification("💳 Razorpay Authorized", `Payment of $${total.toFixed(2)} processed through secure Razorpay Nodes. Merchant ID: MID-NAYEL8823`, "order");
+        };
+      });
+      setShowRazorpayModal(true);
+      return;
+    }
+
     const placed = placeOrder(matchedAddress, checkoutPayment);
     setViewedOrder(placed);
+    // Auto-update analytics count of successful orders
+    setAnalyticsMetrics((prev: any) => ({
+      ...prev,
+      cartAdds: 0,
+      clicks: prev.clicks + 1
+    }));
   };
 
   const handleProductSelect = (product: Product) => {
@@ -369,95 +474,523 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
   }
 
   return (
-    <div className="flex flex-col w-full min-h-screen bg-white">
+    <div className="flex flex-col w-full min-h-screen bg-white dark:bg-slate-950 transition-colors duration-300">
       
       {/* HOME PAGE SECTION */}
       {activeSection === "home" && (
-        <div className="space-y-16 pb-16 animate-fade-in bg-white">
+        <div className="space-y-16 pb-16 animate-fade-in bg-white dark:bg-slate-950 transition-colors duration-300">
           
-          {/* Hero Banner Section (Airbnb / Zara Vibe) */}
-          <div className="relative rounded-[2rem] overflow-hidden bg-neutral-950 aspect-[16/10] md:aspect-[21/9] flex items-center justify-start p-8 md:p-16 border border-neutral-900 shadow-xl group">
-            <img
-              src="https://images.unsplash.com/photo-1612196808214-b8e1d6145a8c?auto=format&fit=crop&w=1400&q=80"
-              alt="Premium Living space"
-              className="absolute inset-0 w-full h-full object-cover opacity-80 group-hover:scale-[1.02] transition-transform duration-[10s] ease-out"
-              referrerPolicy="no-referrer"
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/50 to-transparent"></div>
-            
-            <div className="relative space-y-6 max-w-xl z-10 text-left">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#34C759]/10 border border-[#34C759]/20 rounded-full text-[10px] font-bold text-[#34C759] tracking-wider uppercase">
-                <Sparkles className="h-3 w-3 animate-pulse text-[#34C759]" />
-                GRAND OPENING CELEBRATION
-              </span>
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-white leading-tight tracking-tight font-sans uppercase">
-                Artisanal <span className="text-[#34C759]">Luxury</span> Home Decor
-              </h1>
-              <p className="text-sm md:text-base text-neutral-300 leading-relaxed max-w-md font-sans font-light">
-                Meticulously crafted furniture, hand-blown amber lighting, and organic ceramic vessels designed by world-class artisans. Apply code <strong className="text-[#34C759] font-mono">NAYEL20</strong> for 20% off.
-              </p>
-              <div className="flex gap-4 pt-2">
-                <button
-                  id="btn-hero-explore"
-                  onClick={() => {
-                    setSelectedCategory("All");
-                    setActiveSection("categories");
-                  }}
-                  className="bg-[#34C759] hover:bg-[#2eb04e] text-white px-6 py-3.5 rounded-2xl text-xs font-bold uppercase tracking-wider transition-all shadow-lg shadow-[#34C759]/25 cursor-pointer"
-                >
-                  Explore Collection
-                </button>
+          {/* AESTHETIC HERO INTRO */}
+          <div className="text-center max-w-3xl mx-auto pt-8 px-4 space-y-4">
+            <span className="text-[10px] font-bold text-emerald-500 tracking-[0.3em] uppercase block font-mono">
+              EST. 2026 • NAYEL BASKET LUXURY HOME
+            </span>
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-neutral-900 dark:text-white tracking-tight uppercase font-sans">
+              SLOW LIVING <span className="text-emerald-500 font-light italic">Sanctuary</span>
+            </h1>
+            <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 max-w-xl mx-auto font-light leading-relaxed">
+              Experience hand-crafted architectural decor coordinates, organic clay vessels, and solid European oak furniture designed to invoke spatial poetry.
+            </p>
+          </div>
+
+          {/* SEARCH EXPERIENCE CONSOLE (Instant, Voice, AI, Recent, Suggestions, Image Search) */}
+          <div className="max-w-4xl mx-auto px-4">
+            <div className="bg-slate-50 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-800/80 rounded-3xl p-6 md:p-8 shadow-sm space-y-6">
+              
+              <div className="space-y-1.5">
+                <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] font-mono block">INTELLIGENT SELECTION ENG</span>
+                <h3 className="text-lg font-bold text-neutral-950 dark:text-white tracking-tight">Interactive Search Console</h3>
               </div>
+
+              {/* Input row */}
+              <div className="relative">
+                <div className="relative flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-4 top-3.5 h-4.5 w-4.5 text-slate-400" />
+                    <input
+                      id="home-instant-search"
+                      type="text"
+                      placeholder="Search art pieces, e.g. 'vase', 'oak', 'candle'..."
+                      className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl py-3.5 pl-12 pr-12 text-sm text-neutral-900 dark:text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all font-sans"
+                      value={searchQuery}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setSearchQuery(val);
+                        if (val && !recentSearches.includes(val)) {
+                          // Keep suggestions active
+                        }
+                      }}
+                    />
+                    {searchQuery && (
+                      <button
+                        onClick={() => setSearchQuery("")}
+                        className="absolute right-4 top-3.5 text-slate-400 hover:text-black dark:hover:text-white text-xs cursor-pointer"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Voice Search Button */}
+                  <button
+                    id="btn-voice-search-trigger"
+                    onClick={() => {
+                      setIsVoiceSearching(true);
+                      addNotification("🎤 Voice Calibration Active", "Listening for home design concepts...", "ai");
+                      setTimeout(() => {
+                        setIsVoiceSearching(false);
+                        const queries = ["Stoneware Amber Light", "Oak Coffee Table", "Minimalist Vases", "Candles"];
+                        const randomQuery = queries[Math.floor(Math.random() * queries.length)];
+                        setSearchQuery(randomQuery);
+                        // Save to recent
+                        if (!recentSearches.includes(randomQuery)) {
+                          const next = [randomQuery, ...recentSearches.slice(0, 4)];
+                          setRecentSearches(next);
+                          localStorage.setItem("nb_recent_searches", JSON.stringify(next));
+                        }
+                        addNotification("🎤 Voice Query Decoded", `Matched: "${randomQuery}"`, "ai");
+                      }, 2200);
+                    }}
+                    className="p-3.5 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 hover:border-emerald-500/40 text-slate-400 hover:text-emerald-500 rounded-2xl transition cursor-pointer"
+                    title="Voice Search"
+                  >
+                    <Mic className="h-5 w-5" />
+                  </button>
+
+                  {/* Image Search Placeholder Trigger */}
+                  <button
+                    id="btn-image-search-trigger"
+                    onClick={() => setShowImageSearchDrawer(true)}
+                    className="p-3.5 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 hover:border-emerald-500/40 text-slate-400 hover:text-emerald-500 rounded-2xl transition cursor-pointer"
+                    title="Visual Space Search"
+                  >
+                    <Camera className="h-5 w-5" />
+                  </button>
+                </div>
+
+                {/* Instant Search Live suggestions popup */}
+                {searchQuery.trim() && (
+                  <div className="absolute left-0 right-0 mt-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl z-30 max-h-72 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
+                    <div className="p-3 bg-slate-50 dark:bg-slate-950/40 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest font-mono">
+                      Instant Search Results & Suggestions
+                    </div>
+                    {/* Filter categories */}
+                    {categoriesList.filter(c => c.toLowerCase().includes(searchQuery.toLowerCase()) && c !== "All").map(cat => (
+                      <div
+                        key={cat}
+                        onClick={() => {
+                          setSelectedCategory(cat);
+                          setActiveSection("categories");
+                          setSearchQuery("");
+                          // Save recent
+                          if (!recentSearches.includes(cat)) {
+                            const next = [cat, ...recentSearches.slice(0, 4)];
+                            setRecentSearches(next);
+                            localStorage.setItem("nb_recent_searches", JSON.stringify(next));
+                          }
+                        }}
+                        className="p-3 text-xs font-semibold text-neutral-800 dark:text-slate-200 hover:bg-emerald-500/5 hover:text-emerald-500 dark:hover:text-emerald-400 cursor-pointer flex justify-between items-center"
+                      >
+                        <span>Shop Category: <strong className="text-neutral-950 dark:text-white">{cat}</strong></span>
+                        <ChevronRight className="h-3 w-3" />
+                      </div>
+                    ))}
+
+                    {/* Filter items matching */}
+                    {products.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.brand.toLowerCase().includes(searchQuery.toLowerCase())).slice(0, 6).map(prod => (
+                      <div
+                        key={prod.id}
+                        onClick={() => {
+                          handleProductSelect(prod);
+                          setSearchQuery("");
+                          // Save recent
+                          if (!recentSearches.includes(prod.name)) {
+                            const next = [prod.name, ...recentSearches.slice(0, 4)];
+                            setRecentSearches(next);
+                            localStorage.setItem("nb_recent_searches", JSON.stringify(next));
+                          }
+                        }}
+                        className="p-3 hover:bg-slate-50 dark:hover:bg-slate-950/60 cursor-pointer flex gap-3 items-center"
+                      >
+                        <img src={prod.image} className="w-10 h-10 object-cover rounded-lg border border-slate-100 dark:border-slate-800" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold text-neutral-900 dark:text-slate-100 truncate">{prod.name}</p>
+                          <p className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">{prod.brand} • ${prod.price}</p>
+                        </div>
+                        <span className="text-[10px] text-emerald-500 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full font-mono">View Piece</span>
+                      </div>
+                    ))}
+
+                    {products.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && 
+                     categoriesList.filter(c => c.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && (
+                      <div className="p-4 text-center text-xs text-slate-400 italic">
+                        No immediate matches. Try searching "candle", "vase", "white oak" or "clay".
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* ASK AI CONCIERGE SEARCH MODULE */}
+              <div className="border-t border-slate-100 dark:border-slate-800/60 pt-4 space-y-3.5">
+                <button
+                  id="btn-toggle-ai-prompt"
+                  onClick={() => setShowAiSearchPrompt(!showAiSearchPrompt)}
+                  className="flex items-center gap-2 text-xs font-bold text-emerald-500 dark:text-emerald-400 hover:text-emerald-600 dark:hover:text-emerald-300 transition-colors cursor-pointer"
+                >
+                  <Sparkles className="h-4 w-4 animate-pulse" />
+                  <span>{showAiSearchPrompt ? "Hide AI Concierge Search" : "✨ Query our live Gemini AI Styling Assistant"}</span>
+                </button>
+
+                {showAiSearchPrompt && (
+                  <div className="p-4 bg-white dark:bg-slate-950 border border-slate-150 dark:border-slate-800 rounded-2xl space-y-3 animate-fade-in">
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 font-light">
+                      Describe your space's light conditions or required emotional vibe (e.g. "a sunny corner needing organic earth tones" or "cozy Japandi candle setup") and Gemini will select matches live.
+                    </p>
+                    <div className="flex gap-2">
+                      <input
+                        id="input-ai-search-prompt"
+                        type="text"
+                        placeholder="Describe your design coordinate style..."
+                        className="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2 text-xs text-neutral-800 dark:text-slate-100 focus:outline-none"
+                        value={aiSearchQuery}
+                        onChange={(e) => setAiSearchQuery(e.target.value)}
+                      />
+                      <button
+                        id="btn-submit-ai-search"
+                        onClick={async () => {
+                          if (!aiSearchQuery.trim()) return;
+                          setIsAiSearchLoading(true);
+                          setAiSearchResultText("");
+                          try {
+                            const response = await fetch("/api/gemini/chat", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                message: `Review my home decor product catalog and suggest 2 products that fit this request: "${aiSearchQuery}". Suggest how to style them. Keep it extremely brief and structured in 3 sentences.`,
+                                productsCatalog: products
+                              })
+                            });
+                            if (!response.ok) throw new Error();
+                            const data = await response.json();
+                            setAiSearchResultText(data.text);
+                            // Set search terms based on keywords in recommendation
+                            const keywords = ["vase", "candle", "oak", "wood", "brass", "linen", "clay", "potter"];
+                            const matchedKeyword = keywords.find(k => data.text.toLowerCase().includes(k)) || "Ceramic";
+                            setSearchQuery(matchedKeyword);
+                          } catch (err) {
+                            setAiSearchResultText("⚠️ **Aesthetic Server Resting**: The central AI Concierge coordinates are temporarily updating. However, we highly recommend our core **Amber Candle** and **Stoneware Clay Vases** to anchor organic warm elements! Browse our collections above.");
+                          } finally {
+                            setIsAiSearchLoading(false);
+                          }
+                        }}
+                        className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-4 py-2 rounded-xl transition cursor-pointer"
+                      >
+                        {isAiSearchLoading ? "Consulting..." : "Ask AI"}
+                      </button>
+                    </div>
+
+                    {isAiSearchLoading && (
+                      <div className="flex items-center gap-2 text-xs text-slate-400 italic">
+                        <span className="w-2 h-2 bg-emerald-500 rounded-full animate-ping"></span>
+                        <span>Gemini is compiling spatial harmonies...</span>
+                      </div>
+                    )}
+
+                    {aiSearchResultText && (
+                      <div className="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl text-xs leading-relaxed text-slate-700 dark:text-slate-300 border border-slate-150 dark:border-slate-800/80 prose prose-invert max-w-none">
+                        {aiSearchResultText}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* RECENT & TRENDING SEARCHES */}
+              <div className="flex flex-col gap-3 pt-2">
+                {/* Recent Searches */}
+                {recentSearches.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
+                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest font-mono">Recent:</span>
+                    {recentSearches.map((s, idx) => (
+                      <div key={idx} className="inline-flex items-center bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-full pl-3 pr-1 py-1 text-[11px] text-slate-600 dark:text-slate-300">
+                        <button
+                          onClick={() => setSearchQuery(s)}
+                          className="hover:text-emerald-500 transition-colors cursor-pointer"
+                        >
+                          {s}
+                        </button>
+                        <button
+                          onClick={() => {
+                            const next = recentSearches.filter((_, i) => i !== idx);
+                            setRecentSearches(next);
+                            localStorage.setItem("nb_recent_searches", JSON.stringify(next));
+                          }}
+                          className="ml-1.5 p-0.5 text-slate-400 hover:text-rose-500 rounded-full cursor-pointer"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      onClick={() => {
+                        setRecentSearches([]);
+                        localStorage.removeItem("nb_recent_searches");
+                      }}
+                      className="text-[10px] text-slate-400 hover:text-black dark:hover:text-white cursor-pointer underline ml-auto"
+                    >
+                      Clear All
+                    </button>
+                  </div>
+                )}
+
+                {/* Trending Searches */}
+                <div className="flex flex-wrap items-center gap-2 text-xs">
+                  <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest font-mono">Trending:</span>
+                  {[
+                    { label: "🔥 Hand-blown Glass", query: "Lighting" },
+                    { label: "🌿 Terracotta", query: "Plants" },
+                    { label: "🪵 Solid European Oak", query: "Furniture" },
+                    { label: "🕯️ Amber Soy Tallow", query: "Amber" },
+                    { label: "🥛 Stoneware Vessels", query: "Ceramic" }
+                  ].map((pill, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => {
+                        setSearchQuery(pill.query);
+                        // Save recent
+                        if (!recentSearches.includes(pill.query)) {
+                          const next = [pill.query, ...recentSearches.slice(0, 4)];
+                          setRecentSearches(next);
+                          localStorage.setItem("nb_recent_searches", JSON.stringify(next));
+                        }
+                      }}
+                      className="bg-white dark:bg-slate-950 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 px-3 py-1 rounded-full text-[11px] text-slate-600 dark:text-slate-300 hover:text-emerald-500 dark:hover:text-emerald-400 transition cursor-pointer font-sans"
+                    >
+                      {pill.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
             </div>
           </div>
 
-          {/* CONTINUE SHOPPING / RECENTLY VIEWED */}
-          {recentlyViewed && recentlyViewed.length > 0 && (
-            <div className="space-y-4 animate-fade-in">
-              <div className="flex justify-between items-center">
-                <div>
-                  <span className="text-[10px] font-bold text-[#34C759] uppercase tracking-widest font-mono block">CONTINUE SHOPPING</span>
-                  <h3 className="text-xl font-bold text-neutral-950 tracking-tight font-sans">Recently Viewed Curations</h3>
-                </div>
+          {/* IMAGE/VISUAL SEARCH CAMERA DRAWER MODAL */}
+          {showImageSearchDrawer && (
+            <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-lg w-full p-6 md:p-8 shadow-2xl relative animate-fade-in text-neutral-900 dark:text-white">
                 <button
-                  id="btn-clear-recent"
-                  onClick={() => {
-                    localStorage.removeItem("nb_recently_viewed");
-                    addNotification("🧹 History Cleared", "Your recently viewed history has been reset.", "system");
-                    window.location.reload();
-                  }}
-                  className="text-xs text-slate-400 hover:text-black cursor-pointer underline"
+                  onClick={() => setShowImageSearchDrawer(false)}
+                  className="absolute top-5 right-5 text-slate-400 hover:text-black dark:hover:text-white text-xl cursor-pointer"
                 >
-                  Clear History
+                  ×
                 </button>
-              </div>
-              <div className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide">
-                {recentlyViewed.map((prod) => (
-                  <div
-                    id={`recently-viewed-card-${prod.id}`}
-                    key={prod.id}
-                    onClick={() => handleProductSelect(prod)}
-                    className="flex-shrink-0 w-44 space-y-2 cursor-pointer group"
-                  >
-                    <div className="aspect-square bg-[#F7F7F7] rounded-2xl overflow-hidden border border-slate-100 relative">
-                      <img src={prod.image} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 bg-emerald-500/10 rounded-xl text-emerald-500">
+                      <Camera className="h-5 w-5" />
                     </div>
-                    <div>
-                      <span className="text-[9px] uppercase font-bold text-slate-400 block">{prod.brand}</span>
-                      <span className="text-xs font-semibold text-neutral-950 block truncate group-hover:text-[#34C759] transition-colors">{prod.name}</span>
-                      <span className="text-xs font-bold text-neutral-950 block mt-0.5">${prod.price}</span>
-                    </div>
+                    <h3 className="text-lg font-bold">Visual Space AI Analyzer</h3>
                   </div>
-                ))}
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-light leading-relaxed">
+                    Upload a photograph of your residential chamber, or select one of our premium architectural lookbook rooms below to immediately discover matching artisan furniture and accessory pieces.
+                  </p>
+
+                  {/* Sample Rooms Selection */}
+                  <div className="grid grid-cols-3 gap-3 pt-2">
+                    {[
+                      {
+                        name: "Japandi Study",
+                        img: "https://images.unsplash.com/photo-1612196808214-b8e1d6145a8c?auto=format&fit=crop&w=300&q=80",
+                        query: "Oak"
+                      },
+                      {
+                        name: "Minimalist Lounge",
+                        img: "https://images.unsplash.com/photo-1600121848594-d8644e57abab?auto=format&fit=crop&w=300&q=80",
+                        query: "Ceramic"
+                      },
+                      {
+                        name: "Amber Chamber",
+                        img: "https://images.unsplash.com/photo-1513519245088-0e12902e5a38?auto=format&fit=crop&w=300&q=80",
+                        query: "Candle"
+                      }
+                    ].map((room) => (
+                      <button
+                        key={room.name}
+                        onClick={() => {
+                          setSearchQuery(room.query);
+                          setShowImageSearchDrawer(false);
+                          addNotification("🔍 Visual Match Applied", `Identified matching elements for: ${room.name}`, "ai");
+                        }}
+                        className="group relative rounded-xl overflow-hidden aspect-[4/3] border border-slate-200 dark:border-slate-800 cursor-pointer"
+                      >
+                        <img src={room.img} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                        <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-all"></div>
+                        <span className="absolute bottom-1.5 inset-x-1.5 text-[9px] font-bold text-white text-center tracking-wider truncate block bg-black/60 py-0.5 rounded uppercase">
+                          {room.name}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Manual file upload box */}
+                  <div className="border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl p-6 text-center hover:border-emerald-500/50 dark:hover:border-emerald-500/50 transition cursor-pointer bg-slate-50 dark:bg-slate-950/20">
+                    <input type="file" className="hidden" id="camera-upload-input" onChange={() => {
+                      setSearchQuery("Ceramic");
+                      setShowImageSearchDrawer(false);
+                      addNotification("🔍 Photo Uploaded", "Image search successfully catalog-matched to Ceramics.", "ai");
+                    }} />
+                    <label htmlFor="camera-upload-input" className="cursor-pointer space-y-2 block">
+                      <div className="text-2xl">📸</div>
+                      <p className="text-xs font-semibold text-neutral-800 dark:text-slate-300">Drag & Drop or Tap to Snap</p>
+                      <p className="text-[10px] text-slate-400">Supports PNG, JPG up to 10MB</p>
+                    </label>
+                  </div>
+                </div>
               </div>
             </div>
           )}
 
-          {/* Shop by Department */}
-          <div className="space-y-6">
+          {/* AUTO-PLAYING PREMIUM VIDEO CAROUSEL (Muted Loop Videos) */}
+          <div className="max-w-7xl mx-auto px-4">
+            <div className="relative rounded-[2rem] overflow-hidden bg-neutral-950 aspect-[16/10] md:aspect-[21/9] flex items-center justify-start p-8 md:p-16 border border-neutral-900 shadow-xl group">
+              
+              {/* HTML5 video looped */}
+              <video
+                key={activeVideoIndex}
+                src={[
+                  "https://assets.mixkit.co/videos/preview/mixkit-minimalist-living-room-with-warm-lighting-40342-large.mp4",
+                  "https://assets.mixkit.co/videos/preview/mixkit-hands-of-a-potter-shaping-clay-on-a-wheel-34288-large.mp4",
+                  "https://assets.mixkit.co/videos/preview/mixkit-modern-apartment-living-room-interior-design-41584-large.mp4",
+                  "https://assets.mixkit.co/videos/preview/mixkit-dining-room-interior-with-elegant-wooden-furniture-41585-large.mp4"
+                ][activeVideoIndex]}
+                autoPlay
+                loop
+                muted
+                playsInline
+                className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:scale-[1.01] transition-transform duration-[8s] ease-out"
+              />
+
+              {/* Dark Gradients overlays */}
+              <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/40 to-transparent"></div>
+              
+              {/* Dynamic Overlay Text */}
+              <div className="relative space-y-4 max-w-lg z-10 text-left text-white animate-fade-in">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-[9px] font-bold text-emerald-400 tracking-widest uppercase font-mono">
+                  <Sparkles className="h-3 w-3 text-emerald-400 animate-pulse" />
+                  CINEMATIC SPACE LOOKBOOK
+                </span>
+                
+                <h2 className="text-3xl md:text-4xl font-black tracking-tight uppercase leading-none font-sans">
+                  {[
+                    "The Scandinavian Sanctuary",
+                    "Tactile Clay Art",
+                    "Warm Amber Ambient",
+                    "Quiet Dining Assembly"
+                  ][activeVideoIndex]}
+                </h2>
+                
+                <p className="text-xs md:text-sm text-neutral-300 font-light leading-relaxed">
+                  {[
+                    "An architectural integration of raw European white oak, natural light rays, and breathing linen coordinates.",
+                    "Sensing the raw mud body glaze and physical pottery craftsmanship reflecting organic elements.",
+                    "Atmospheric soy wax tallow candles casting quiet cozy shadows inside mahogany book studies.",
+                    "Artisanal low-slung walnut dining chairs coordinated for slow family assemblies."
+                  ][activeVideoIndex]}
+                </p>
+
+                <div className="flex gap-3 pt-1">
+                  <button
+                    onClick={() => {
+                      const cats = ["Furniture", "Lighting", "Wall Decor", "Dining"];
+                      setSelectedCategory(cats[activeVideoIndex]);
+                      setActiveSection("categories");
+                    }}
+                    className="bg-white hover:bg-neutral-100 text-black px-5 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition cursor-pointer"
+                  >
+                    Shop This Look
+                  </button>
+                </div>
+              </div>
+
+              {/* Slide controls & Dot indicators */}
+              <div className="absolute bottom-6 right-6 flex items-center gap-3 z-10">
+                {[...Array(4)].map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setActiveVideoIndex(i)}
+                    className={`h-2.5 rounded-full transition-all duration-300 cursor-pointer ${
+                      activeVideoIndex === i ? "w-6 bg-emerald-500" : "w-2.5 bg-white/40 hover:bg-white"
+                    }`}
+                  />
+                ))}
+              </div>
+
+            </div>
+          </div>
+
+          {/* HIGH-URGENCY PREMIUM FLASH SALE (Amazon/Apple Style Countdown) */}
+          <div className="max-w-7xl mx-auto px-4">
+            <div className="bg-gradient-to-br from-neutral-900 to-neutral-950 border border-neutral-800 rounded-[2rem] p-8 text-white shadow-xl flex flex-col lg:flex-row items-center justify-between gap-8 relative overflow-hidden">
+              
+              {/* Background accent */}
+              <div className="absolute -top-24 -right-24 w-72 h-72 bg-emerald-500/5 rounded-full filter blur-3xl pointer-events-none"></div>
+
+              <div className="space-y-4 max-w-lg">
+                <span className="inline-flex items-center gap-1 bg-amber-500/10 border border-amber-500/20 text-amber-500 text-[9px] font-bold px-2.5 py-1 rounded-md uppercase font-mono">
+                  <Flame className="h-3 w-3 fill-amber-500" /> LIMITED MARKDOWN ASSEMBLY
+                </span>
+                <h2 className="text-3xl font-black tracking-tight uppercase">MIDSUMMER SOLSTICE SALE</h2>
+                <p className="text-xs text-neutral-300 leading-relaxed font-light">
+                  Direct select hand-woven coordinates and amber soy candles marked down at 35% off. Complimentary international priority packaging applied automatically.
+                </p>
+
+                {/* Countdown Timer Grid */}
+                <div className="flex items-center gap-3 pt-1 font-mono">
+                  <div className="flex flex-col items-center">
+                    <span className="bg-white/5 border border-white/10 px-3 py-2 rounded-xl text-lg font-black">{String(countdownTime.hours).padStart(2, '0')}</span>
+                    <span className="text-[8px] text-neutral-400 mt-1 uppercase">Hours</span>
+                  </div>
+                  <span className="text-xl font-bold text-neutral-500">:</span>
+                  <div className="flex flex-col items-center">
+                    <span className="bg-white/5 border border-white/10 px-3 py-2 rounded-xl text-lg font-black">{String(countdownTime.minutes).padStart(2, '0')}</span>
+                    <span className="text-[8px] text-neutral-400 mt-1 uppercase">Mins</span>
+                  </div>
+                  <span className="text-xl font-bold text-neutral-500">:</span>
+                  <div className="flex flex-col items-center">
+                    <span className="bg-white/5 border border-white/10 px-3 py-2 rounded-xl text-lg font-black text-emerald-400">{String(countdownTime.seconds).padStart(2, '0')}</span>
+                    <span className="text-[8px] text-neutral-400 mt-1 uppercase">Secs</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Show Promo coupon box */}
+              <div className="flex flex-col sm:flex-row items-stretch gap-3 bg-white/5 border border-white/10 p-4 rounded-3xl w-full lg:w-auto max-w-md">
+                <div className="flex-1">
+                  <span className="text-[9px] text-neutral-400 font-bold uppercase block tracking-wider">LTD COUPON VOUCHER</span>
+                  <span className="text-lg font-mono font-bold text-emerald-400">DECOR15</span>
+                  <p className="text-[9px] text-neutral-400 font-light mt-0.5">Applies $15 markdown instantly on orders above $50.</p>
+                </div>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText("DECOR15");
+                    addNotification("🎫 Coupon Copied", "Solstice Voucher code copied to clipboard.", "promo");
+                  }}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-slate-950 px-5 rounded-2xl text-[10px] font-black uppercase tracking-wider transition cursor-pointer self-center sm:self-auto flex items-center justify-center py-2 sm:py-0"
+                >
+                  COPY
+                </button>
+              </div>
+
+            </div>
+          </div>
+
+          {/* DYNAMIC SHOP BY COLLECTION CATEGORIES (IKEA-Style) */}
+          <div className="max-w-7xl mx-auto px-4 space-y-6">
             <div className="text-center md:text-left">
-              <span className="text-[10px] font-bold text-[#34C759] uppercase tracking-widest font-mono block">DEPARTMENTS</span>
-              <h3 className="text-2xl font-bold text-neutral-950 tracking-tight font-sans">Shop by Collection</h3>
+              <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest font-mono block">DEPARTMENTS</span>
+              <h3 className="text-2xl font-black text-neutral-950 dark:text-white tracking-tight font-sans uppercase">Shop by Collection</h3>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
               {categoriesList.map((cat) => (
@@ -468,66 +1001,225 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                     setSelectedCategory(cat);
                     setActiveSection("categories");
                   }}
-                  className="group relative p-6 bg-[#F7F7F7] hover:bg-neutral-900 border border-slate-100 rounded-3xl transition-all duration-300 cursor-pointer flex flex-col items-center justify-center text-center space-y-2 aspect-square"
+                  className="group p-6 bg-slate-50 dark:bg-slate-900/40 hover:bg-neutral-900 dark:hover:bg-emerald-500/10 border border-slate-100 dark:border-slate-800 rounded-3xl transition-all duration-300 cursor-pointer flex flex-col items-center justify-center text-center space-y-2.5 aspect-square shadow-sm"
                 >
-                  <Compass className="h-6 w-6 text-slate-400 group-hover:text-[#34C759] transition-colors" />
-                  <span className="text-xs font-semibold text-neutral-900 group-hover:text-white transition-colors">{cat === "All" ? "✨ Discover All" : cat}</span>
+                  <Compass className="h-6 w-6 text-slate-400 group-hover:text-emerald-500 transition-colors" />
+                  <span className="text-xs font-bold text-neutral-900 dark:text-slate-200 group-hover:text-white transition-colors">{cat === "All" ? "✨ Discover All" : cat}</span>
                 </button>
               ))}
             </div>
           </div>
 
-          {/* FEATURED COLLECTIONS SUBTABS */}
-          <div className="space-y-8">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 border-b border-slate-100 pb-4">
-              <div>
-                <span className="text-[10px] font-bold text-[#34C759] uppercase tracking-widest font-mono block">SELECTED BLUEPRINTS</span>
-                <h3 className="text-2xl font-bold text-neutral-950 tracking-tight font-sans">Featured Collections</h3>
-              </div>
-              <div className="flex gap-2 bg-slate-100/80 p-1.5 rounded-2xl w-full md:w-auto overflow-x-auto scrollbar-hide">
-                {[
-                  { id: "trending", label: "🔥 Trending" },
-                  { id: "bestsellers", label: "⭐️ Best Sellers" },
-                  { id: "newarrivals", label: "✨ New Arrivals" },
-                  { id: "editors", label: "💼 Editor's Choice" }
-                ].map((tab) => (
+          {/* AI-PERSONALIZED PREFERENCE FEED (Gemini Neural Node Sorting) */}
+          <div className="max-w-7xl mx-auto px-4">
+            <div className="bg-slate-50 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-800 rounded-[2rem] p-6 shadow-sm space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <span className="text-[10px] font-mono text-emerald-500 uppercase tracking-[0.2em] block font-black">AI PERSONALIZED PREFERENCE</span>
+                  <h3 className="text-lg font-black tracking-tight mt-1 font-sans text-neutral-950 dark:text-white uppercase">Curation Synthesis Feed</h3>
+                  <p className="text-xs text-slate-400 font-light mt-0.5">Activate Gemini recommendations mapped to your live interior taste profile.</p>
+                </div>
+
+                <div className="flex items-center gap-3 self-start sm:self-center bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-2.5 rounded-2xl">
+                  <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">Personalized Feed</span>
                   <button
-                    id={`btn-home-tab-${tab.id}`}
-                    key={tab.id}
-                    onClick={() => setHomeCollectionTab(tab.id as any)}
-                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex-shrink-0 cursor-pointer ${
-                      homeCollectionTab === tab.id
-                        ? "bg-white text-black shadow-sm"
-                        : "text-slate-500 hover:text-black"
+                    id="btn-toggle-personalized-feed"
+                    type="button"
+                    onClick={() => {
+                      const next = !isPersonalizedFeedActive;
+                      setIsPersonalizedFeedActive(next);
+                      localStorage.setItem("nb_personalized_feed", String(next));
+                      addNotification(
+                        next ? "✨ Curation Mode: ACTIVE" : "✨ Curation Mode: STANDARD",
+                        next 
+                          ? "Gemini neural nodes are prioritizing scandinavian warm elements." 
+                          : "Switched back to default catalog chronological listings.",
+                        "ai"
+                      );
+                    }}
+                    className={`w-12 h-7 rounded-full p-1 transition-all flex items-center cursor-pointer ${
+                      isPersonalizedFeedActive ? "bg-emerald-500 justify-end" : "bg-neutral-200 dark:bg-slate-800 justify-start"
                     }`}
                   >
-                    {tab.label}
+                    <div className="w-5 h-5 bg-white rounded-full shadow-md"></div>
                   </button>
-                ))}
+                </div>
               </div>
+
+              {isPersonalizedFeedActive ? (
+                <div className="bg-white dark:bg-slate-950 border border-slate-150 dark:border-slate-800/80 rounded-2xl p-4 space-y-3.5 animate-fade-in text-xs">
+                  <div className="flex items-start gap-2.5 text-emerald-500">
+                    <span className="text-base">✨</span>
+                    <div>
+                      <span className="font-bold block uppercase text-[10px] tracking-wider text-emerald-500 font-mono">Taste Signature Detected: Warm Organic Scandinavian</span>
+                      <p className="text-slate-600 dark:text-slate-400 font-light mt-0.5 leading-normal">
+                        We observed your interest in premium ceramics and solid oak. The home feed is sorted to prioritize clay bodies, atmospheric candle holders, and raw natural fiber textures.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* AI Styling Pairs */}
+                  <div className="border-t border-slate-100 dark:border-slate-800/60 pt-3">
+                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block font-mono">Bespoke Styling Curation Pairs</span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+                      <div className="bg-slate-50 dark:bg-slate-900/40 border border-slate-150 dark:border-slate-800/80 p-3 rounded-xl flex gap-3 items-center">
+                        <span className="text-2xl">🍯</span>
+                        <div>
+                          <p className="font-bold text-neutral-800 dark:text-slate-200">The Cozy Hearth</p>
+                          <p className="text-[10px] text-slate-400">Match raw stoneware vessels with warm tallow candles.</p>
+                        </div>
+                      </div>
+                      <div className="bg-slate-50 dark:bg-slate-900/40 border border-slate-150 dark:border-slate-800/80 p-3 rounded-xl flex gap-3 items-center">
+                        <span className="text-2xl">🪵</span>
+                        <div>
+                          <p className="font-bold text-neutral-800 dark:text-slate-200">The Hearthstone Center</p>
+                          <p className="text-[10px] text-slate-400">Anchor oak tables with organic charcoal ceramics.</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-[10px] text-slate-400 italic">Toggle the selector to activate real-time AI-optimized product prioritization, customer coordinate curation, and custom room pairing hints.</p>
+              )}
+            </div>
+          </div>
+
+          {/* DYNAMIC HOMEPAGE PRODUCT LAYOUTS: TRENDING PRODUCTS SECTION */}
+          <div className="max-w-7xl mx-auto px-4 space-y-6">
+            <div className="flex justify-between items-end">
+              <div>
+                <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest font-mono block">LIVE DEMAND CURVES</span>
+                <h3 className="text-2xl font-black text-neutral-950 dark:text-white tracking-tight uppercase">Trending Products</h3>
+              </div>
+              <button
+                onClick={() => {
+                  setSelectedCategory("All");
+                  setActiveSection("categories");
+                }}
+                className="text-xs font-bold text-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 flex items-center gap-1 cursor-pointer"
+              >
+                <span>View All</span>
+                <ArrowRight className="h-4 w-4" />
+              </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-              {products
-                .filter((p) => {
-                  if (homeCollectionTab === "trending") return true;
-                  if (homeCollectionTab === "bestsellers") return p.rating >= 4.8;
-                  if (homeCollectionTab === "newarrivals") return p.id === "prod_5" || p.id === "prod_6" || p.id === "prod_3";
-                  if (homeCollectionTab === "editors") return p.id === "prod_1" || p.id === "prod_4" || p.id === "prod_2";
-                  return true;
-                })
-                .slice(0, 6)
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {[...products]
+                .filter(p => p.rating >= 4.6)
+                .slice(0, 4)
                 .map((prod) => (
                   <ProductCard key={prod.id} product={prod} onSelect={handleProductSelect} />
                 ))}
             </div>
           </div>
 
-          {/* SHOP BY ROOM BENTO GRID */}
-          <div className="space-y-6">
+          {/* NEW ARRIVALS SECTION */}
+          <div className="max-w-7xl mx-auto px-4 space-y-6">
+            <div className="flex justify-between items-end">
+              <div>
+                <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest font-mono block">JUST RELEASED ARCHITECTURAL PIECES</span>
+                <h3 className="text-2xl font-black text-neutral-950 dark:text-white tracking-tight uppercase">New Arrivals</h3>
+              </div>
+              <button
+                onClick={() => {
+                  setSelectedCategory("All");
+                  setActiveSection("categories");
+                }}
+                className="text-xs font-bold text-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 flex items-center gap-1 cursor-pointer"
+              >
+                <span>Browse Latest</span>
+                <ArrowRight className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {[...products]
+                .reverse()
+                .slice(0, 4)
+                .map((prod) => (
+                  <ProductCard key={prod.id} product={prod} onSelect={handleProductSelect} />
+                ))}
+            </div>
+          </div>
+
+          {/* BEST SELLERS SECTION */}
+          <div className="max-w-7xl mx-auto px-4 space-y-6">
+            <div className="flex justify-between items-end">
+              <div>
+                <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest font-mono block">VERIFIED EXCELLENCE PIECES</span>
+                <h3 className="text-2xl font-black text-neutral-950 dark:text-white tracking-tight uppercase">Best Sellers</h3>
+              </div>
+              <button
+                onClick={() => {
+                  setSelectedCategory("All");
+                  setActiveSection("categories");
+                }}
+                className="text-xs font-bold text-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 flex items-center gap-1 cursor-pointer"
+              >
+                <span>Inspect All</span>
+                <ArrowRight className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {[...products]
+                .filter(p => p.rating >= 4.8)
+                .slice(0, 4)
+                .map((prod) => (
+                  <ProductCard key={prod.id} product={prod} onSelect={handleProductSelect} />
+                ))}
+            </div>
+          </div>
+
+          {/* CONTINUE SHOPPING / RECENTLY VIEWED */}
+          {recentlyViewed && recentlyViewed.length > 0 && (
+            <div className="max-w-7xl mx-auto px-4 space-y-6 animate-fade-in">
+              <div className="flex justify-between items-center">
+                <div>
+                  <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest font-mono block">CONTINUE SHOPPING</span>
+                  <h3 className="text-xl font-black text-neutral-950 dark:text-white tracking-tight uppercase">Recently Viewed Curations</h3>
+                </div>
+                <button
+                  id="btn-clear-recent"
+                  onClick={() => {
+                    localStorage.removeItem("nb_recently_viewed");
+                    addNotification("🧹 History Cleared", "Your recently viewed history has been reset.", "system");
+                    window.location.reload();
+                  }}
+                  className="text-xs text-slate-400 hover:text-black dark:hover:text-white cursor-pointer underline font-sans"
+                >
+                  Clear History
+                </button>
+              </div>
+              
+              <div className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide">
+                {recentlyViewed.map((prod) => (
+                  <div
+                    id={`recently-viewed-card-${prod.id}`}
+                    key={prod.id}
+                    onClick={() => handleProductSelect(prod)}
+                    className="flex-shrink-0 w-44 space-y-2.5 cursor-pointer group"
+                  >
+                    <div className="aspect-[4/5] bg-slate-50 dark:bg-slate-900 rounded-2xl overflow-hidden border border-slate-100 dark:border-slate-800 relative">
+                      <img src={prod.image} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-slate-500 block">{prod.brand}</span>
+                      <span className="text-xs font-bold text-neutral-950 dark:text-neutral-100 block truncate group-hover:text-emerald-500 transition-colors">{prod.name}</span>
+                      <span className="text-xs font-black text-neutral-950 dark:text-neutral-200 block mt-0.5">${prod.price}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* SHOP BY ROOM BENTO GRID (IKEA inspired) */}
+          <div className="max-w-7xl mx-auto px-4 space-y-6">
             <div className="text-center md:text-left">
-              <span className="text-[10px] font-bold text-[#34C759] uppercase tracking-widest font-mono block">ARCHITECTURAL PLANNING</span>
-              <h3 className="text-2xl font-bold text-neutral-950 tracking-tight font-sans">Shop By Room</h3>
+              <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest font-mono block">ARCHITECTURAL PLANNING</span>
+              <h3 className="text-2xl font-black text-neutral-950 dark:text-white tracking-tight uppercase">Shop By Room Layouts</h3>
               <p className="text-xs text-slate-400 mt-1">Curated styling blueprints coordinated by department and residential flow.</p>
             </div>
 
@@ -545,11 +1237,11 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                     setSelectedCategory("All");
                     setActiveSection("categories");
                   }}
-                  className="relative rounded-3xl overflow-hidden aspect-[4/5] border border-slate-100 shadow-sm cursor-pointer group"
+                  className="relative rounded-3xl overflow-hidden aspect-[4/5] border border-slate-100 dark:border-slate-800 shadow-sm cursor-pointer group"
                 >
                   <img src={room.img} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent flex flex-col justify-end p-5">
-                    <span className="text-[9px] font-bold text-[#34C759] font-mono tracking-widest uppercase mb-1">{room.count}</span>
+                    <span className="text-[9px] font-bold text-emerald-400 font-mono tracking-widest uppercase mb-1">{room.count}</span>
                     <span className="text-base font-bold text-white tracking-wide uppercase">{room.name}</span>
                   </div>
                 </div>
@@ -557,20 +1249,20 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
             </div>
           </div>
 
-          {/* SHOP BY DESIGN STYLE */}
-          <div className="space-y-6">
+          {/* SHOP BY DESIGN STYLE (Apple/IKEA Curation Aesthetics) */}
+          <div className="max-w-7xl mx-auto px-4 space-y-6">
             <div className="text-center md:text-left">
-              <span className="text-[10px] font-bold text-[#34C759] uppercase tracking-widest font-mono block">ESTHETIQUE DESIGN</span>
-              <h3 className="text-2xl font-bold text-neutral-950 tracking-tight font-sans">Shop by Design Style</h3>
+              <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest font-mono block">ESTHETIQUE DESIGN</span>
+              <h3 className="text-2xl font-black text-neutral-950 dark:text-white tracking-tight uppercase">Shop by Design Aesthetic</h3>
               <p className="text-xs text-slate-400 mt-1">Filter our catalog based on world-class residential architecture genres.</p>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               {[
                 { name: "Japandi Harmony", desc: "Organic oak & chalk clay", filter: "Ceramic" },
                 { name: "Minimalist Slate", desc: "Quiet luxury, clean geometry", filter: "Minimalist" },
-                { name: "Mid-Century", desc: "Tapered legs, rich walnut", filter: "Furniture" },
+                { name: "Mid-Century Walnut", desc: "Tapered legs, rich grains", filter: "Furniture" },
                 { name: "Parisian Chic", desc: "Burnished brass & velvet", filter: "Brass" },
-                { name: "Rustic Craft", desc: "Cozy fibers & woven wool", filter: "Woolen" }
+                { name: "Rustic Cozy Craft", desc: "Cozy fibers & woven wool", filter: "Woolen" }
               ].map((style) => (
                 <div
                   id={`style-card-${style.name.replace(/\s+/g, '-').toLowerCase()}`}
@@ -578,14 +1270,14 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                   onClick={() => {
                     setSearchQuery(style.filter);
                     setActiveSection("categories");
-                    addNotification("🎨 Filter Applied", `Curated for: ${style.name}`, "system");
+                    addNotification("🎨 Filter Applied", `Curated lookbook for: ${style.name}`, "system");
                   }}
-                  className="bg-[#F7F7F7] hover:bg-neutral-900 group p-6 rounded-3xl border border-slate-100 cursor-pointer transition-all duration-300 flex flex-col justify-between aspect-[4/3]"
+                  className="bg-slate-50 dark:bg-slate-900/40 hover:bg-neutral-900 dark:hover:bg-emerald-500/10 group p-6 rounded-3xl border border-slate-100 dark:border-slate-800 cursor-pointer transition-all duration-300 flex flex-col justify-between aspect-[4/3] shadow-sm"
                 >
-                  <div className="h-2 w-2 rounded-full bg-[#34C759] group-hover:scale-150 transition-transform"></div>
+                  <div className="h-2 w-2 rounded-full bg-emerald-500 group-hover:scale-150 transition-transform"></div>
                   <div>
-                    <span className="text-xs font-bold text-neutral-900 group-hover:text-white block">{style.name}</span>
-                    <span className="text-[9px] text-slate-400 group-hover:text-slate-300 block mt-1">{style.desc}</span>
+                    <span className="text-xs font-bold text-neutral-900 dark:text-slate-150 group-hover:text-white block">{style.name}</span>
+                    <span className="text-[9px] text-slate-400 dark:text-slate-500 group-hover:text-slate-300 block mt-1">{style.desc}</span>
                   </div>
                 </div>
               ))}
@@ -593,35 +1285,36 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
           </div>
 
           {/* Luxury Offers banner */}
-          <div className="bg-[#F7F7F7] border border-slate-100 rounded-[2rem] p-8 md:p-12 flex flex-col md:flex-row items-center justify-between gap-8 shadow-sm">
-            <div className="space-y-4 max-w-lg">
-              <span className="text-[10px] font-bold text-[#34C759] uppercase tracking-widest font-mono">Exclusive Markdown</span>
-              <h2 className="text-3xl font-bold text-black font-sans leading-tight">Elevate Your Living Sanctuary</h2>
-              <p className="text-xs text-slate-500 leading-relaxed font-sans">
-                Save $15 instantly on orders above $50 using discount voucher <strong className="text-black font-mono">DECOR15</strong>. Complimentary shipping applied across continental borders.
-              </p>
-            </div>
-            <div className="flex gap-3 bg-white border border-slate-200 p-4 rounded-3xl items-center font-mono text-sm shadow-sm w-full md:w-auto justify-between">
-              <div>
-                <span className="text-[9px] text-slate-400 block font-sans font-bold uppercase">Promo Coupon</span>
-                <span className="font-bold text-black font-mono">DECOR15</span>
+          <div className="max-w-7xl mx-auto px-4">
+            <div className="bg-slate-50 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-800/80 rounded-[2rem] p-8 md:p-12 flex flex-col md:flex-row items-center justify-between gap-8 shadow-sm">
+              <div className="space-y-4 max-w-lg">
+                <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest font-mono block">EXCLUSIVE VOUCHER</span>
+                <h2 className="text-3xl font-black text-neutral-950 dark:text-white leading-tight uppercase font-sans">Elevate Your Living Sanctuary</h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-sans font-light">
+                  Pair raw stoneware vessels with hand-burnished candle bases to anchor space and light coordinates organically. Complimented by free priority courier carriage.
+                </p>
               </div>
-              <button
-                id="btn-copy-promo-banner"
-                onClick={() => {
-                  navigator.clipboard.writeText("DECOR15");
-                  addNotification("🎫 Coupon Copied", "Voucher code copied to clipboard.", "promo");
-                }}
-                className="bg-black text-white px-4 py-2.5 rounded-xl text-xs font-bold tracking-wider cursor-pointer"
-              >
-                COPY
-              </button>
+              <div className="flex gap-3 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-4 rounded-3xl items-center font-mono text-sm shadow-sm w-full md:w-auto justify-between">
+                <div>
+                  <span className="text-[9px] text-slate-400 block font-sans font-bold uppercase">Promo Coupon</span>
+                  <span className="font-bold text-neutral-950 dark:text-white font-mono">DECOR15</span>
+                </div>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText("DECOR15");
+                    addNotification("🎫 Coupon Copied", "Voucher code copied to clipboard.", "promo");
+                  }}
+                  className="bg-neutral-950 dark:bg-emerald-600 hover:bg-neutral-900 dark:hover:bg-emerald-500 text-white dark:text-slate-950 px-4 py-2.5 rounded-xl text-xs font-bold tracking-wider cursor-pointer"
+                >
+                  COPY
+                </button>
+              </div>
             </div>
           </div>
 
           {/* Interactive Cinematic LOOKBOOK PRODUCT VIDEOS */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">
-            <div className="bg-neutral-950 rounded-[2rem] border border-neutral-900 p-8 md:p-12 text-center space-y-6 relative overflow-hidden aspect-[4/3] flex flex-col justify-center items-center group">
+          <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">
+            <div className="bg-neutral-950 rounded-[2rem] border border-neutral-900 p-8 md:p-12 text-center space-y-6 relative overflow-hidden aspect-[4/3] flex flex-col justify-center items-center group shadow-md">
               <video
                 src="https://assets.mixkit.co/videos/preview/mixkit-decorating-a-warm-living-room-41561-large.mp4"
                 className="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:scale-105 transition-transform duration-[6s]"
@@ -632,20 +1325,20 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
               />
               <div className="absolute inset-0 bg-neutral-950/40"></div>
               <div className="relative space-y-4 max-w-sm z-10 text-center">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-[9px] font-bold text-white tracking-widest uppercase">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-[9px] font-bold text-white tracking-widest uppercase font-mono">
                   <Play className="h-3 w-3 fill-white text-white" /> LOOKBOOK CINEMATIC
                 </span>
-                <h2 className="text-2xl font-bold text-white tracking-tight uppercase">Artisanal Spaces In Motion</h2>
+                <h2 className="text-2xl font-black text-white tracking-tight uppercase">Artisanal Spaces In Motion</h2>
                 <p className="text-xs text-neutral-300 leading-relaxed font-light">
                   Witness the tactile organic finish of kao-lin clay vases, burnished royal brass candle holders, and European Oak furniture in real living coordinates.
                 </p>
               </div>
             </div>
 
-            <div className="bg-[#F7F7F7] border border-slate-100 p-8 md:p-12 rounded-[2rem] flex flex-col justify-center space-y-6">
-              <span className="text-[10px] font-bold text-[#34C759] uppercase tracking-widest font-mono block">Client Endorsements</span>
-              <h2 className="text-2xl font-bold text-black font-sans">Trusted by Designers</h2>
-              <p className="text-xs text-slate-500 leading-relaxed">
+            <div className="bg-slate-50 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-800 p-8 md:p-12 rounded-[2rem] flex flex-col justify-center space-y-6 shadow-sm">
+              <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest font-mono block">Client Endorsements</span>
+              <h2 className="text-2xl font-black text-neutral-950 dark:text-white uppercase">Trusted by Designers</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-light">
                 Our design blueprints have been verified across elegant residential quarters. Read real logs from leading architectural curators.
               </p>
               
@@ -654,14 +1347,14 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                   { name: "Sophia Loren", role: "Principal Interior Architect", comment: "The Aurora ceramic vase trio is an absolute masterpiece. The chalk matte mineral glaze is beautifully tactile, reflecting natural light organically. Incredible curation." },
                   { name: "Marc Anthony", role: "Aesthetic Enthusiast", comment: "Stunning white oak coffee table. Assembly was pre-machined to perfection, taking under 10 minutes. The wood smells rich of natural hardwax protective oils." }
                 ].map((test, idx) => (
-                  <div key={idx} className="bg-white p-6 rounded-2xl border border-slate-200/50 shadow-sm space-y-2">
-                    <p className="text-xs text-slate-600 leading-relaxed italic">"{test.comment}"</p>
+                  <div key={idx} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 p-5 rounded-2xl shadow-sm space-y-2">
+                    <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed italic">"{test.comment}"</p>
                     <div className="flex justify-between items-center">
                       <div>
-                        <span className="font-bold text-xs text-black block">{test.name}</span>
-                        <span className="text-[9px] text-slate-400 font-medium block">{test.role}</span>
+                        <span className="font-bold text-xs text-neutral-950 dark:text-white block">{test.name}</span>
+                        <span className="text-[9px] text-slate-400 dark:text-slate-500 font-medium block">{test.role}</span>
                       </div>
-                      <span className="text-[9px] bg-[#34C759]/10 text-[#34C759] px-2 py-0.5 rounded font-mono font-bold">VERIFIED GUEST</span>
+                      <span className="text-[9px] bg-emerald-500/10 text-emerald-500 px-2 py-0.5 rounded font-mono font-bold uppercase">VERIFIED GUEST</span>
                     </div>
                   </div>
                 ))}
@@ -670,10 +1363,10 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
           </div>
 
           {/* INTERIOR INSPIRATION GALLERY */}
-          <div className="space-y-6">
+          <div className="max-w-7xl mx-auto px-4 space-y-6">
             <div className="text-center md:text-left">
-              <span className="text-[10px] font-bold text-[#34C759] uppercase tracking-widest font-mono block">GALLERIA D'INSPIRATION</span>
-              <h3 className="text-2xl font-bold text-neutral-950 tracking-tight font-sans">Interior Inspiration Gallery</h3>
+              <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest font-mono block">GALLERIA D'INSPIRATION</span>
+              <h3 className="text-2xl font-black text-neutral-950 dark:text-white tracking-tight uppercase">Interior Inspiration Gallery</h3>
               <p className="text-xs text-slate-400 mt-1">Glimpse beautiful spaces designed by Nayel Basket patrons worldwide.</p>
             </div>
             
@@ -683,10 +1376,10 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                 { title: "Daylight Dining Chamber", img: "https://images.unsplash.com/photo-1617806118233-18e1db207f62?auto=format&fit=crop&w=600&q=80", style: "Quiet Luxury" },
                 { title: "Warm Amber Study", img: "https://images.unsplash.com/photo-1513519245088-0e12902e5a38?auto=format&fit=crop&w=600&q=80", style: "Mid-Century Modern" }
               ].map((item, idx) => (
-                <div key={idx} className="relative rounded-3xl overflow-hidden aspect-square group border border-slate-100 shadow-sm">
+                <div key={idx} className="relative rounded-3xl overflow-hidden aspect-square group border border-slate-100 dark:border-slate-800 shadow-sm">
                   <img src={item.img} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-5">
-                    <span className="text-[9px] font-bold text-[#34C759] font-mono uppercase">{item.style}</span>
+                    <span className="text-[9px] font-bold text-emerald-400 font-mono uppercase">{item.style}</span>
                     <span className="text-xs font-bold text-white tracking-wide">{item.title}</span>
                   </div>
                 </div>
@@ -695,10 +1388,10 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
           </div>
 
           {/* PREMIUM EDITORIAL BLOGS */}
-          <div className="space-y-6">
+          <div className="max-w-7xl mx-auto px-4 space-y-6">
             <div className="text-center md:text-left">
-              <span className="text-[10px] font-bold text-[#34C759] uppercase tracking-widest font-mono block">LITERARY COMPASS</span>
-              <h3 className="text-2xl font-bold text-neutral-950 tracking-tight font-sans">Nayel Editorial Journals</h3>
+              <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest font-mono block">LITERARY COMPASS</span>
+              <h3 className="text-2xl font-black text-neutral-950 dark:text-white tracking-tight uppercase">Nayel Editorial Journals</h3>
               <p className="text-xs text-slate-400 mt-1">Philosophies of slow living, balance, and spatial poetry.</p>
             </div>
             
@@ -718,16 +1411,16 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                 }
               ].map((blog, idx) => (
                 <div key={idx} className="group space-y-4 cursor-pointer">
-                  <div className="aspect-[16/10] overflow-hidden rounded-3xl border border-slate-100 bg-[#F7F7F7]">
-                    <img src={blog.img} className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-500" />
+                  <div className="aspect-[16/10] overflow-hidden rounded-3xl border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40">
+                    <img src={blog.img} className="w-full h-full object-cover group-hover:scale-[1.01] transition-transform duration-500" />
                   </div>
                   <div className="space-y-2">
                     <div className="flex justify-between items-center text-[10px] text-slate-400 font-mono">
                       <span>Nayel Curators</span>
                       <span>{blog.readTime}</span>
                     </div>
-                    <h4 className="font-bold text-base text-neutral-950 group-hover:text-[#34C759] transition-colors">{blog.title}</h4>
-                    <p className="text-xs text-slate-500 leading-relaxed font-sans">{blog.excerpt}</p>
+                    <h4 className="font-bold text-base text-neutral-950 dark:text-white group-hover:text-emerald-500 transition-colors">{blog.title}</h4>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-sans font-light">{blog.excerpt}</p>
                   </div>
                 </div>
               ))}
@@ -747,17 +1440,185 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
               <p className="text-xs text-slate-400 mt-0.5">Deploy elite spacing curation inside your home.</p>
             </div>
 
-            {/* Premium Search box */}
-            <div className="relative w-full md:w-80">
-              <input
-                id="input-catalog-search"
-                type="text"
-                placeholder="Search premium pieces..."
-                className="w-full bg-[#F7F7F7] border border-slate-200 rounded-2xl px-4 py-3 pl-10 text-xs text-black focus:outline-none focus:border-black font-sans"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" />
+            {/* Premium Search box with Voice, Image, and Barcode/Tag scanning controllers */}
+            <div className="flex flex-col gap-2.5 w-full md:w-auto relative">
+              <div className="relative flex items-center gap-2">
+                <div className="relative w-full md:w-80">
+                  <input
+                    id="input-catalog-search"
+                    type="text"
+                    placeholder="Search pieces, e.g. 'vase', 'oak'..."
+                    className="w-full bg-[#F7F7F7] border border-slate-200 rounded-2xl px-4 py-3 pl-10 pr-24 text-xs text-black focus:outline-none focus:border-black font-sans"
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setAnalyticsMetrics((prev: any) => ({ ...prev, searches: (prev.searches || 0) + 1 }));
+                    }}
+                  />
+                  <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" />
+                  
+                  {/* Micro Buttons inside the search input */}
+                  <div className="absolute right-2 top-2 flex gap-1.5">
+                    {/* Voice Search Mic Button */}
+                    <button
+                      id="btn-voice-search-trigger"
+                      type="button"
+                      onClick={() => {
+                        setIsVoiceSearching(true);
+                        setAnalyticsMetrics((prev: any) => ({ ...prev, clicks: prev.clicks + 1 }));
+                        // Simulate voice typing after 2 seconds
+                        setTimeout(() => {
+                          setSearchQuery("Ceramic");
+                          setIsVoiceSearching(false);
+                          addNotification("🎤 Voice Curation Match", "Transcribed voice audio matched: 'Ceramic'", "ai");
+                        }, 2200);
+                      }}
+                      className="p-1.5 hover:bg-neutral-200 text-slate-600 rounded-lg transition-colors cursor-pointer"
+                      title="Voice Search"
+                    >
+                      🎤
+                    </button>
+
+                    {/* Image Search Camera Button */}
+                    <button
+                      id="btn-image-search-trigger"
+                      type="button"
+                      onClick={() => {
+                        setShowImageSearchDrawer(!showImageSearchDrawer);
+                        setShowCatalogScanner(false);
+                        setAnalyticsMetrics((prev: any) => ({ ...prev, clicks: prev.clicks + 1 }));
+                      }}
+                      className={`p-1.5 hover:bg-neutral-200 text-slate-600 rounded-lg transition-colors cursor-pointer ${showImageSearchDrawer ? "bg-neutral-200" : ""}`}
+                      title="Image Curation Search"
+                    >
+                      📷
+                    </button>
+
+                    {/* Barcode/Tag Scanner Button */}
+                    <button
+                      id="btn-barcode-scan-trigger"
+                      type="button"
+                      onClick={() => {
+                        setShowCatalogScanner(!showCatalogScanner);
+                        setShowImageSearchDrawer(false);
+                        setAnalyticsMetrics((prev: any) => ({ ...prev, clicks: prev.clicks + 1 }));
+                      }}
+                      className={`p-1.5 hover:bg-neutral-200 text-slate-600 rounded-lg transition-colors cursor-pointer ${showCatalogScanner ? "bg-neutral-200" : ""}`}
+                      title="Scan Tag/SKU Barcode"
+                    >
+                      🏷️
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* VOICE SEARCH PULSING WAVE OVERLAY */}
+              {isVoiceSearching && (
+                <div className="absolute top-14 right-0 w-80 bg-neutral-900 text-white rounded-2xl p-4 shadow-xl z-20 border border-neutral-800 animate-fade-in text-center space-y-3">
+                  <span className="text-[9px] font-mono text-[#34C759] uppercase tracking-widest font-black block">Voice recognition engine live</span>
+                  <div className="flex justify-center items-center gap-1 py-2">
+                    <span className="w-1 bg-[#34C759] h-6 rounded-full animate-pulse"></span>
+                    <span className="w-1 bg-[#34C759] h-8 rounded-full animate-pulse delay-75"></span>
+                    <span className="w-1 bg-[#34C759] h-10 rounded-full animate-pulse delay-150"></span>
+                    <span className="w-1 bg-[#34C759] h-6 rounded-full animate-pulse delay-75"></span>
+                  </div>
+                  <p className="text-xs text-slate-300 font-light italic">"Listening... Say 'Ceramic', 'Timber table', or 'Vases'..."</p>
+                </div>
+              )}
+
+              {/* IMAGE SEARCH DRAWER */}
+              {showImageSearchDrawer && (
+                <div className="absolute top-14 right-0 w-80 bg-white border border-slate-200 rounded-2xl p-4 shadow-2xl z-20 animate-fade-in space-y-3">
+                  <div>
+                    <span className="text-[9px] font-bold text-[#34C759] font-mono tracking-wider block uppercase">VISUAL SEARCH INTERPRETER</span>
+                    <h4 className="text-xs font-bold text-black mt-0.5">Upload or Pick Room Mood Photo</h4>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { query: "vessel", name: "Ceramics", img: "https://images.unsplash.com/photo-1612196808214-b8e1d6145a8c?auto=format&fit=crop&w=150&q=80" },
+                      { query: "oak", name: "Oak wood", img: "https://images.unsplash.com/photo-1513519245088-0e12902e5a38?auto=format&fit=crop&w=150&q=80" },
+                      { query: "candle", name: "Candlelit", img: "https://images.unsplash.com/photo-1603006905003-be475563bc59?auto=format&fit=crop&w=150&q=80" }
+                    ].map((imgItem, idx) => (
+                      <div
+                        key={idx}
+                        onClick={() => {
+                          setSearchQuery(imgItem.query);
+                          setShowImageSearchDrawer(false);
+                          addNotification("📷 Image Search Matches", `Visual analysis matched ${imgItem.name} coordinates. Catalogs re-curating.`, "ai");
+                        }}
+                        className="relative rounded-lg overflow-hidden aspect-square border border-slate-100 cursor-pointer group"
+                      >
+                        <img src={imgItem.img} className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                        <div className="absolute inset-0 bg-black/40 flex items-end p-1 text-center justify-center">
+                          <span className="text-[8px] font-black text-white">{imgItem.name}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Manual upload simulation */}
+                  <div className="border-t border-slate-100 pt-2.5">
+                    <button
+                      id="btn-simulate-upload-photo"
+                      onClick={() => {
+                        setSearchQuery("vase");
+                        setShowImageSearchDrawer(false);
+                        addNotification("📷 Custom Photo Matched", "Custom camera image analyzed successfully. Matched standard clay vases.", "ai");
+                      }}
+                      className="w-full py-2 bg-neutral-900 hover:bg-neutral-800 text-white font-bold rounded-xl text-[10px] uppercase text-center cursor-pointer"
+                    >
+                      Simulate Custom Photo Upload
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* BARCODE / TAG SCANNER */}
+              {showCatalogScanner && (
+                <div className="absolute top-14 right-0 w-80 bg-white border border-slate-200 rounded-2xl p-4 shadow-2xl z-20 animate-fade-in space-y-3 text-center">
+                  <div className="text-left">
+                    <span className="text-[9px] font-bold text-[#34C759] font-mono tracking-wider block uppercase">NFC / SKU Tag SCANNER</span>
+                    <h4 className="text-xs font-bold text-black mt-0.5">Simulate Laser Scanning</h4>
+                  </div>
+
+                  {/* Viewfinder simulation */}
+                  <div className="h-32 bg-slate-100 rounded-xl relative overflow-hidden flex items-center justify-center border-2 border-slate-300">
+                    <div className="absolute inset-x-4 top-1/2 h-0.5 bg-red-500 animate-pulse"></div>
+                    <span className="text-4xl">🏷️</span>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <p className="text-[10px] text-slate-400">Position the physical Nayel Basket furniture tag inside the scanner camera frame.</p>
+                    <div className="grid grid-cols-2 gap-2 pt-1.5">
+                      <button
+                        id="btn-scan-sku-1"
+                        onClick={() => {
+                          const item = products.find(p => p.id === "prod_1") || products[0];
+                          setShowCatalogScanner(false);
+                          handleProductSelect(item);
+                          addNotification("🏷️ Scan Successful", "Parsed SKU: NAYEL-AURORA-01. Opened product sheets.", "system");
+                        }}
+                        className="py-1.5 bg-[#F7F7F7] hover:bg-neutral-200 text-black border rounded-lg text-[9px] font-bold uppercase cursor-pointer"
+                      >
+                        Scan Tag SKU-01
+                      </button>
+                      <button
+                        id="btn-scan-sku-2"
+                        onClick={() => {
+                          const item = products.find(p => p.id === "prod_4") || products[0];
+                          setShowCatalogScanner(false);
+                          handleProductSelect(item);
+                          addNotification("🏷️ Scan Successful", "Parsed SKU: NAYEL-TIMBER-04. Opened product sheets.", "system");
+                        }}
+                        className="py-1.5 bg-[#F7F7F7] hover:bg-neutral-200 text-black border rounded-lg text-[9px] font-bold uppercase cursor-pointer"
+                      >
+                        Scan Tag SKU-04
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -1065,7 +1926,9 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                       { id: "Card", label: "Credit/Debit Card" },
                       { id: "UPI", label: "UPI Instant" },
                       { id: "Stripe", label: "Stripe secure" },
-                      { id: "Wallet", label: `Luxury Wallet ($${walletBalance.toFixed(2)})` }
+                      { id: "Wallet", label: `Luxury Wallet ($${walletBalance.toFixed(2)})` },
+                      { id: "Razorpay", label: "💳 Razorpay Gate" },
+                      { id: "COD", label: "📦 Cash on Delivery" }
                     ].map((gate) => (
                       <button
                         id={`btn-pay-gate-${gate.id}`}
@@ -1796,8 +2659,88 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                             ))}
                           </div>
 
-                          <div className="flex gap-2 pt-2 border-t mt-2">
-                            {ord.status !== "Cancelled" && ord.status !== "Returned" && (
+                          <div className="flex flex-wrap gap-2 pt-2 border-t mt-2">
+                            {/* Track Live Route Button for active transit states */}
+                            {ord.status !== "Cancelled" && ord.status !== "Returned" && ord.status !== "Delivered" && (
+                              <button
+                                id={`btn-track-live-route-${ord.id}`}
+                                type="button"
+                                onClick={() => {
+                                  setActiveTrackingOrder(ord);
+                                  addNotification("🚚 Route Live", `Active GPS coordinate stream established for order ${ord.id}. Tracking courier...`, "system");
+                                }}
+                                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-[10px] uppercase cursor-pointer transition-all shadow-sm"
+                              >
+                                🚚 Track Live Route
+                              </button>
+                            )}
+
+                            {/* Download Invoice Button for all orders */}
+                            <button
+                              id={`btn-download-invoice-${ord.id}`}
+                              type="button"
+                              onClick={() => {
+                                const invoiceText = `
+============================================================
+              NAYEL BASKET LUXURY HOME DECOR
+                    TAX INVOICE / RECEIPT
+============================================================
+Order ID:       ${ord.id}
+Date:           ${new Date(ord.date).toLocaleString()}
+Customer ID:    ${customerUser?.id || "Patron guest"}
+Email:          ${customerUser?.email || "anonymous@nayel.com"}
+Biometric Auth: Verified Passkeys (SHA-256 Enabled)
+
+------------------------------------------------------------
+DELIVERY POINT
+------------------------------------------------------------
+Name:           ${ord.shippingAddress?.fullName}
+Phone:          ${ord.shippingAddress?.phone}
+Street Address: ${ord.shippingAddress?.streetAddress}
+City:           ${ord.shippingAddress?.city}, ${ord.shippingAddress?.state} ${ord.shippingAddress?.postalCode}
+
+------------------------------------------------------------
+CURATED PRODUCTS SPECIFICATION
+------------------------------------------------------------
+${ord.items.map((item, idx) => `${idx + 1}. ${item.product.name} (SKU: ${item.product.sku})
+   Qty:         ${item.quantity}
+   Unit Price:  $${item.product.price.toFixed(2)}
+   Color/Size:  ${item.selectedColor || "Natural"} / ${item.selectedSize || "Standard"}`).join("\n\n")}
+
+------------------------------------------------------------
+LEDGER CALCULATION
+------------------------------------------------------------
+Subtotal:       $${ord.subtotal.toFixed(2)}
+Discount:      -$${ord.discount.toFixed(2)}
+Taxes (8%):     $${ord.tax.toFixed(2)}
+Delivery Fees:  COMPLIMENTARY
+============================================================
+GRAND TOTAL:    $${ord.total.toFixed(2)}
+============================================================
+Payment Mode:   ${ord.paymentMethod} Payment Gateway
+Tracking OTP:   ${ord.otp} (Present to courier on doorstep arrival)
+Secure Stamp:   SHA256-SIGN-SUCCESS-MOCK-AUTHENTIC-DECOR
+
+Thank you for choosing Nayel Basket to curate your home blueprint.
+Need support? Ask our WhatsApp Concierge Desk.
+============================================================`;
+                                const blob = new Blob([invoiceText], { type: "text/plain" });
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement("a");
+                                a.href = url;
+                                a.download = `Nayel_Basket_Invoice_${ord.id}.txt`;
+                                document.body.appendChild(a);
+                                a.click();
+                                document.body.removeChild(a);
+                                URL.revokeObjectURL(url);
+                                addNotification("📄 Invoice Downloaded", `Bespoke tax ledger for Order ${ord.id} compiled and saved.`, "system");
+                              }}
+                              className="px-3 py-1.5 bg-[#F7F7F7] hover:bg-neutral-200 border border-slate-200 text-slate-700 font-bold rounded-lg text-[10px] uppercase cursor-pointer transition-all"
+                            >
+                              📄 Download Invoice
+                            </button>
+
+                            {ord.status !== "Cancelled" && ord.status !== "Returned" && ord.status !== "Delivered" && (
                               <button
                                 id={`btn-cancel-ord-${ord.id}`}
                                 onClick={() => cancelOrder(ord.id)}
@@ -2761,6 +3704,442 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
           <AIChat />
         </div>
       )}
+
+      {/* FLOATERS & MODALS: ADVANCED PRODUCTION FEATURES */}
+
+      {/* WhatsApp Support Concierge Widget */}
+      <div className="fixed bottom-6 right-6 z-40">
+        <button
+          id="btn-whatsapp-toggle"
+          onClick={() => {
+            setShowWhatsAppWidget(!showWhatsAppWidget);
+            setAnalyticsMetrics((prev: any) => ({ ...prev, clicks: prev.clicks + 1 }));
+          }}
+          className="w-14 h-14 bg-[#25D366] hover:bg-[#20ba56] text-white rounded-full flex items-center justify-center shadow-2xl hover:scale-105 transition-all cursor-pointer group relative"
+          title="WhatsApp Bespoke Support"
+        >
+          <span className="text-2xl">💬</span>
+          <span className="absolute -top-1 -right-1 bg-red-500 text-white font-mono text-[9px] font-black w-5 h-5 rounded-full flex items-center justify-center animate-bounce">1</span>
+        </button>
+
+        {showWhatsAppWidget && (
+          <div className="absolute bottom-16 right-0 w-80 sm:w-96 bg-white border border-slate-200 rounded-3xl shadow-2xl overflow-hidden animate-fade-in text-black text-left flex flex-col h-[450px]">
+            {/* Header */}
+            <div className="bg-[#075E54] text-white p-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center font-bold text-lg">📿</div>
+              <div>
+                <h4 className="font-bold text-xs">Nayel Basket Bespoke Desk</h4>
+                <p className="text-[10px] text-emerald-200 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span>Artisan stylist online</span>
+                </p>
+              </div>
+            </div>
+
+            {/* Conversation list */}
+            <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-[#E5DDD5]">
+              {whatsAppHistory.map((item, idx) => (
+                <div key={idx} className={`flex flex-col ${item.sender === "user" ? "items-end" : "items-start"}`}>
+                  <div className={`p-3 rounded-2xl max-w-[85%] text-xs shadow-sm leading-normal ${
+                    item.sender === "user" 
+                      ? "bg-[#DCF8C6] text-neutral-900 rounded-tr-none" 
+                      : "bg-white text-neutral-900 rounded-tl-none"
+                  }`}>
+                    <p>{item.text}</p>
+                    <span className="text-[8px] text-slate-400 block text-right mt-1 font-mono">{item.time}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Input form */}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!whatsAppInput.trim()) return;
+                const text = whatsAppInput;
+                setWhatsAppInput("");
+                const userMsg = { sender: "user", text, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) };
+                setWhatsAppHistory(prev => [...prev, userMsg]);
+                
+                // Automatic response simulator
+                setTimeout(() => {
+                  let reply = "Our head styling advisor will read your note shortly. Rest assured, your luxury layout remains our highest dedication.";
+                  const query = text.toLowerCase();
+                  if (query.includes("return") || query.includes("refund")) {
+                    reply = "📦 **Instant Refunds**: Simply go to Profile > Active Orders, click 'Initiate Return' and fill in description. Once submitted, your refund will instantly settle in your Wallet!";
+                  } else if (query.includes("reward") || query.includes("points")) {
+                    reply = "✨ **Rewards Policy**: Earn 10 points for every $1 spent! Your active balance is shown on your Profile, and can be used on seasonal custom curation drops.";
+                  } else if (query.includes("coupon") || query.includes("offer") || query.includes("code")) {
+                    reply = "🎫 **Active Promotions**: Use voucher code NAYEL20 for 20% off all vases, or DECOR15 for 15% off across the collection. Just type it in during final checkout.";
+                  } else if (query.includes("order") || query.includes("track")) {
+                    reply = "🚚 **Live Dispatch Route**: We support real-time delivery vehicle mapping! Head over to Profile > Orders and tap 'TRACK LIVE ROUTE' to see where your driver is located on the interactive map.";
+                  }
+                  
+                  setWhatsAppHistory(prev => [...prev, {
+                    sender: "desk",
+                    text: reply,
+                    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                  }]);
+                }, 1000);
+              }}
+              className="p-3 bg-slate-50 border-t border-slate-100 flex gap-2"
+            >
+              <input
+                id="input-whatsapp"
+                type="text"
+                placeholder="Ask about orders, refunds, styles..."
+                className="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-black focus:outline-none focus:border-[#075E54]"
+                value={whatsAppInput}
+                onChange={(e) => setWhatsAppInput(e.target.value)}
+              />
+              <button
+                id="btn-whatsapp-send"
+                type="submit"
+                className="bg-[#075E54] text-white font-bold px-3.5 py-1.5 rounded-xl text-xs cursor-pointer hover:bg-emerald-950"
+              >
+                Send
+              </button>
+            </form>
+          </div>
+        )}
+      </div>
+
+      {/* RAZORPAY PAYMENTS MODAL */}
+      {showRazorpayModal && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 text-black">
+          <div className="bg-slate-900 text-white rounded-3xl max-w-md w-full border border-slate-800 shadow-2xl overflow-hidden animate-fade-in text-left">
+            {/* Header */}
+            <div className="bg-slate-950 p-5 border-b border-slate-800 flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <span className="bg-[#1785FF] text-white p-1 rounded font-bold font-sans text-sm tracking-widest">R</span>
+                <div>
+                  <h3 className="font-bold text-xs uppercase tracking-wider">Razorpay Secure</h3>
+                  <p className="text-[10px] text-slate-400">Merchant ID: MID-NAYEL8823</p>
+                </div>
+              </div>
+              <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 font-bold">● Live Sandbox</span>
+            </div>
+
+            {/* Body */}
+            <div className="p-6 space-y-6">
+              <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 flex justify-between items-center">
+                <div>
+                  <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider font-mono">Bespoke Decor Total</span>
+                  <p className="text-xl font-black font-sans mt-0.5">${razorpayOrderTotal.toFixed(2)}</p>
+                </div>
+                <div className="text-right">
+                  <span className="text-[9px] text-slate-500 font-mono">INR Conversion (MOCK)</span>
+                  <p className="text-xs font-bold text-slate-300 mt-1">₹{(razorpayOrderTotal * 85).toFixed(2)}</p>
+                </div>
+              </div>
+
+              {/* Secure Payment Options tabs inside Razorpay */}
+              <div className="space-y-4">
+                <span className="text-[10px] text-slate-400 uppercase tracking-widest block font-mono">Select Secure Payment Mode</span>
+                
+                {/* Instant UPI QR Code display */}
+                <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 text-center space-y-3">
+                  <div className="w-32 h-32 bg-white rounded-xl p-2 mx-auto flex items-center justify-center shadow-lg">
+                    {/* Simulated vector QR Code */}
+                    <div className="w-full h-full border-4 border-dashed border-slate-900 flex flex-wrap items-center justify-center relative">
+                      <div className="w-5 h-5 bg-black absolute top-1 left-1"></div>
+                      <div className="w-5 h-5 bg-black absolute top-1 right-1"></div>
+                      <div className="w-5 h-5 bg-black absolute bottom-1 left-1"></div>
+                      <div className="w-3 h-3 bg-black"></div>
+                      <span className="text-[10px] font-black text-slate-400 mt-6 block">UPI QR</span>
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-slate-400">Scan this secure QR with PhonePe, GooglePay, or Paytm to initiate checkout.</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 pt-2">
+                <button
+                  id="btn-razorpay-fail"
+                  onClick={() => {
+                    setShowRazorpayModal(false);
+                    addNotification("⚠️ Razorpay Failed", "Payment gateway auth rejected or user canceled. Feel free to try again.", "system");
+                    setAnalyticsMetrics((prev: any) => ({ ...prev, clicks: prev.clicks + 1 }));
+                  }}
+                  className="py-3 bg-red-500/10 hover:bg-red-500/15 border border-red-500/20 text-red-400 font-bold rounded-xl text-xs transition cursor-pointer text-center"
+                >
+                  Simulate Failure
+                </button>
+                <button
+                  id="btn-razorpay-success"
+                  onClick={() => {
+                    setShowRazorpayModal(false);
+                    if (razorpaySuccessCallback) {
+                      razorpaySuccessCallback();
+                    }
+                  }}
+                  className="py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition cursor-pointer text-center"
+                >
+                  Simulate Success
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-slate-950 p-3 text-center border-t border-slate-800">
+              <p className="text-[8px] text-slate-500 font-mono tracking-wider">🔒 PCI-DSS Compliant • 256-Bit SSL Secured Network Tunnel</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* LIVE ROUTE ORDER TRACKING MODAL */}
+      {activeTrackingOrder && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 text-black">
+          <div className="bg-white rounded-3xl max-w-lg w-full border border-slate-100 shadow-2xl overflow-hidden animate-fade-in text-left">
+            {/* Header */}
+            <div className="bg-neutral-900 text-white p-5 flex justify-between items-center">
+              <div>
+                <span className="text-[9px] text-[#34C759] uppercase tracking-wider block font-mono font-black">Dispatch Telemetry</span>
+                <h3 className="font-bold text-sm">Live Order Tracking • {activeTrackingOrder.id}</h3>
+              </div>
+              <button
+                id="btn-close-tracking-modal"
+                onClick={() => {
+                  setActiveTrackingOrder(null);
+                  setAnalyticsMetrics((prev: any) => ({ ...prev, clicks: prev.clicks + 1 }));
+                }}
+                className="text-white hover:text-[#34C759]"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Map Simulation */}
+            <div className="h-44 bg-slate-100 relative overflow-hidden flex items-center justify-center">
+              {/* Simulated Map Canvas Background */}
+              <div className="absolute inset-0 opacity-40 bg-[radial-gradient(#ccc_1px,transparent_1px)] [background-size:16px_16px]"></div>
+              
+              {/* Warehouse Point */}
+              <div className="absolute left-10 top-24 text-center">
+                <span className="text-xl block animate-pulse">🏭</span>
+                <span className="text-[8px] font-bold text-slate-500 block uppercase font-mono mt-1">Nayel Hub</span>
+              </div>
+
+              {/* Delivery Path SVG Line */}
+              <svg className="absolute inset-0 w-full h-full pointer-events-none">
+                <path
+                  d="M 60,96 C 140,40 240,150 340,80"
+                  fill="none"
+                  stroke="#34C759"
+                  strokeWidth="3"
+                  strokeDasharray="6 4"
+                  className="animate-pulse"
+                />
+              </svg>
+
+              {/* Delivery Agent Vehicle icon (truck) animating */}
+              <div className="absolute left-[50%] top-16 text-center animate-bounce duration-[2000ms] text-2xl z-10">
+                🚚
+              </div>
+
+              {/* Customer House Point */}
+              <div className="absolute right-12 top-16 text-center">
+                <span className="text-xl block">🏡</span>
+                <span className="text-[8px] font-bold text-[#34C759] block uppercase font-mono mt-1">My Residence</span>
+              </div>
+            </div>
+
+            {/* Telemetry metrics row */}
+            <div className="grid grid-cols-4 divide-x divide-slate-100 border-b border-slate-100 bg-[#F7F7F7] p-3 text-center text-[10px]">
+              <div>
+                <span className="text-slate-400 block uppercase">Transit ETA</span>
+                <span className="font-mono font-black text-black text-xs">8 Mins</span>
+              </div>
+              <div>
+                <span className="text-slate-400 block uppercase">Velocity</span>
+                <span className="font-mono font-black text-black text-xs">34 km/h</span>
+              </div>
+              <div>
+                <span className="text-slate-400 block uppercase">Carrier bat</span>
+                <span className="font-mono font-black text-[#34C759] text-xs">92% Electric</span>
+              </div>
+              <div>
+                <span className="text-slate-400 block uppercase">Distance</span>
+                <span className="font-mono font-black text-black text-xs">1.8 km</span>
+              </div>
+            </div>
+
+            {/* Courier driver information */}
+            <div className="p-6 space-y-4 text-xs">
+              <div className="flex gap-4 items-center bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
+                <div className="w-10 h-10 rounded-full bg-neutral-900 text-white font-bold flex items-center justify-center text-sm font-sans uppercase">
+                  VK
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-bold text-black text-xs">Vikram Malhotra</h4>
+                  <p className="text-[10px] text-slate-400">Nayel Certified Premium Delivery Partner</p>
+                </div>
+                <button
+                  id="btn-tracking-call"
+                  onClick={() => alert("Connecting secure dialer line to Vikram Malhotra...")}
+                  className="bg-neutral-900 hover:bg-neutral-800 text-white font-semibold px-3 py-1.5 rounded-lg text-[10px] cursor-pointer"
+                >
+                  Call Agent
+                </button>
+              </div>
+
+              {/* Tracking Event Stepper List */}
+              <div className="space-y-3 pt-2">
+                <span className="font-bold text-[10px] text-slate-400 uppercase tracking-wider block font-sans">Checkpoint Stepper Logs</span>
+                <div className="space-y-3 max-h-36 overflow-y-auto">
+                  <div className="flex gap-3 items-start">
+                    <span className="h-2 w-2 rounded-full bg-[#34C759] mt-1 flex-shrink-0 animate-ping"></span>
+                    <div>
+                      <p className="font-bold text-neutral-950 text-[11px]">Out for Premium Delivery</p>
+                      <p className="text-[10px] text-slate-400">Courier Vikram Malhotra dispatched with custom bubble scaling protection. (Just now)</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-3 items-start">
+                    <span className="h-2 w-2 rounded-full bg-slate-300 mt-1 flex-shrink-0"></span>
+                    <div>
+                      <p className="font-bold text-slate-400 text-[11px]">Bespoke Polish Finished</p>
+                      <p className="text-[10px] text-slate-400 font-light">Craftsman applied final burnishing wax to timber. (1.5 hours ago)</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Instant courier delivery override simulator */}
+              <button
+                id="btn-simulate-courier-arrival"
+                onClick={() => {
+                  setActiveTrackingOrder(null);
+                  addNotification("📦 Package Delivered!", `Order ${activeTrackingOrder.id} successfully completed. Enjoy your bespoke decor curation!`, "order");
+                  // Trigger refresh of order status to Delivered
+                  activeTrackingOrder.status = "Delivered";
+                  activeTrackingOrder.tracking[3] = { title: "Delivered", description: "Package successfully arrived at customer's residence.", status: "completed", timestamp: new Date().toISOString(), location: "Residence" };
+                  alert("Courier simulated arrival! Order marked as DELIVERED successfully.");
+                }}
+                className="w-full py-2.5 bg-[#34C759] hover:bg-[#2eb04e] text-white font-black rounded-xl text-center cursor-pointer text-xs uppercase shadow-md shadow-[#34C759]/10"
+              >
+                Simulate Courier Doorstep Arrival
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* BEHAVIORAL ANALYTICS & TELEMETRY NODE DRAWER */}
+      {showAnalyticsNode && (
+        <div className="fixed inset-y-0 left-0 w-80 bg-slate-950 border-r border-slate-800 shadow-2xl z-50 text-white p-6 animate-fade-in flex flex-col justify-between overflow-y-auto">
+          <div className="space-y-6 text-left">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-4">
+              <div className="flex items-center gap-2">
+                <span className="p-1 bg-emerald-500/10 text-emerald-400 rounded">
+                  <Activity className="h-4 w-4 animate-pulse" />
+                </span>
+                <div>
+                  <h3 className="font-black text-xs uppercase tracking-widest font-mono text-emerald-400">Security Telemetry</h3>
+                  <p className="text-[8px] text-slate-500">Live Behavior Tracking Node</p>
+                </div>
+              </div>
+              <button
+                id="btn-close-analytics"
+                onClick={() => setShowAnalyticsNode(false)}
+                className="text-slate-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Metrics bento-grid list */}
+            <div className="grid grid-cols-2 gap-3 text-center">
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-3">
+                <span className="text-[8px] text-slate-400 uppercase font-mono tracking-wider block">Hovers tracked</span>
+                <span className="text-xl font-black font-mono text-emerald-400 mt-0.5 block">{analyticsMetrics.hovers || 0}</span>
+              </div>
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-3">
+                <span className="text-[8px] text-slate-400 uppercase font-mono tracking-wider block">Click actions</span>
+                <span className="text-xl font-black font-mono text-emerald-400 mt-0.5 block">{analyticsMetrics.clicks || 0}</span>
+              </div>
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-3">
+                <span className="text-[8px] text-slate-400 uppercase font-mono tracking-wider block">Page loads</span>
+                <span className="text-xl font-black font-mono text-emerald-400 mt-0.5 block">{analyticsMetrics.pageViews || 1}</span>
+              </div>
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-3">
+                <span className="text-[8px] text-slate-400 uppercase font-mono tracking-wider block">Items Added</span>
+                <span className="text-xl font-black font-mono text-emerald-400 mt-0.5 block">{analyticsMetrics.cartAdds || 0}</span>
+              </div>
+            </div>
+
+            {/* Live session heat layout tracker details */}
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+              <span className="text-[10px] text-slate-400 uppercase font-mono tracking-wider block">Customer Heatmap Activity</span>
+              <div className="space-y-1.5 text-[10px]">
+                <div className="flex justify-between text-slate-400">
+                  <span>Primary Focus:</span>
+                  <span className="text-white font-mono font-bold">Catalog Vases & Timber</span>
+                </div>
+                <div className="flex justify-between text-slate-400">
+                  <span>Bespoke Styling Rate:</span>
+                  <span className="text-emerald-400 font-mono font-bold">High (Scandinavian Curation)</span>
+                </div>
+                <div className="flex justify-between text-slate-400">
+                  <span>Biometric Authed:</span>
+                  <span className="text-[#34C759] font-mono">True (Passkeys)</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Event console logger simulator */}
+            <div className="space-y-2">
+              <span className="text-[9px] text-slate-500 uppercase tracking-widest font-mono block">Realtime Event Stream</span>
+              <div className="bg-slate-950 rounded-xl p-3 font-mono text-[9px] text-emerald-300 border border-slate-900 space-y-1.5 max-h-48 overflow-y-auto">
+                <p className="text-slate-500">[0.0s] Connection to Supabase WebSockets established.</p>
+                <p className="text-emerald-400">[{Date.now().toString().slice(-4)}s] [Click] Action fired: btn-navbar-tab</p>
+                {analyticsMetrics.hovers > 0 && <p className="text-emerald-300">[{Date.now().toString().slice(-4)}s] [Hover] Mouse entered premium product asset card</p>}
+                {analyticsMetrics.cartAdds > 0 && <p className="text-[#34C759]">[{Date.now().toString().slice(-4)}s] [Cart] Added new item SKU matching decor inventory</p>}
+                <p className="text-slate-500">[{Date.now().toString().slice(-4)}s] [Telemetry] Heartbeat active (3000ms interval)</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-slate-900 pt-4 text-center">
+            <span className="text-[8px] text-slate-500 font-mono">Nayel Core Analytics Node v4.1</span>
+          </div>
+        </div>
+      )}
+
+      {/* TOAST CUSTOM PUSH NOTIFICATION ALERT BANNER */}
+      {customPushNotification && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] max-w-sm w-full bg-slate-900 border border-emerald-500/30 text-white rounded-2xl p-4 shadow-2xl flex gap-3.5 items-start animate-slide-down">
+          <div className="w-8 h-8 rounded-full bg-emerald-500/15 flex items-center justify-center text-emerald-400">
+            🔔
+          </div>
+          <div className="flex-1 text-xs">
+            <h5 className="font-bold text-slate-200">{customPushNotification.title}</h5>
+            <p className="text-[11px] text-slate-400 leading-normal mt-0.5">{customPushNotification.description}</p>
+          </div>
+          <button
+            id="btn-close-push-toast"
+            onClick={() => setCustomPushNotification(null)}
+            className="text-slate-500 hover:text-white"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* Hidden analytics floating activator */}
+      <div className="fixed bottom-6 left-6 z-40">
+        <button
+          id="btn-analytics-toggle"
+          onClick={() => {
+            setShowAnalyticsNode(!showAnalyticsNode);
+            setAnalyticsMetrics((prev: any) => ({ ...prev, clicks: prev.clicks + 1 }));
+          }}
+          className="w-12 h-12 bg-neutral-900 border border-neutral-800 text-slate-400 hover:text-white rounded-full flex items-center justify-center shadow-2xl cursor-pointer hover:scale-105 transition-all"
+          title="Telemetry and Behavior Analytics"
+        >
+          <Activity className="h-5 w-5 animate-pulse" />
+        </button>
+      </div>
 
     </div>
   );

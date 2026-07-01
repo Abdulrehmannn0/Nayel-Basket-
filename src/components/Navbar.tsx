@@ -17,7 +17,9 @@ import {
   Heart,
   User,
   Home,
-  Layers
+  Layers,
+  Sun,
+  Moon
 } from "lucide-react";
 
 interface NavbarProps {
@@ -32,7 +34,9 @@ export const Navbar: React.FC<NavbarProps> = ({ activeSection, setActiveSection 
     searchQuery, 
     setSearchQuery,
     cart,
-    wishlist
+    wishlist,
+    theme,
+    toggleTheme
   } = useApp();
   
   const [openNotifications, setOpenNotifications] = useState(false);
@@ -85,7 +89,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeSection, setActiveSection 
   const wishlistCount = wishlist.length;
 
   return (
-    <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-100 text-black">
+    <nav className="sticky top-0 z-50 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md border-b border-slate-100 dark:border-slate-900 text-black dark:text-white transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-6 sm:px-8">
         <div className="flex items-center justify-between py-4 sm:py-5 h-20">
           
@@ -96,16 +100,16 @@ export const Navbar: React.FC<NavbarProps> = ({ activeSection, setActiveSection 
             onClick={() => setActiveSection("home")}
           >
             <div className="flex items-center gap-2">
-              <div className="bg-black p-1.5 rounded-lg transition-transform duration-300 group-hover:scale-105">
+              <div className="bg-black dark:bg-slate-800 p-1.5 rounded-lg transition-transform duration-300 group-hover:scale-105">
                 <ShoppingBag className="h-4 w-4 text-white stroke-[2]" />
               </div>
-              <span className="text-sm font-black tracking-[0.15em] font-sans text-black uppercase">
+              <span className="text-sm font-black tracking-[0.15em] font-sans text-black dark:text-white uppercase">
                 NAYEL BASKET
               </span>
             </div>
             
             {/* Greeting text below logo */}
-            <span className="text-[10px] text-slate-400 font-medium tracking-wide mt-1 animate-fade-in">
+            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium tracking-wide mt-1 animate-fade-in">
               {greeting}, connoisseur
             </span>
           </div>
@@ -115,25 +119,25 @@ export const Navbar: React.FC<NavbarProps> = ({ activeSection, setActiveSection 
             <button
               id="nav-link-home"
               onClick={() => setActiveSection("home")}
-              className={`hover:text-black transition-colors duration-200 cursor-pointer ${activeSection === "home" ? "text-black border-b-2 border-black pb-1.5" : "text-slate-400"}`}
+              className={`hover:text-black dark:hover:text-white transition-colors duration-200 cursor-pointer ${activeSection === "home" ? "text-black dark:text-white border-b-2 border-black dark:border-white pb-1.5" : "text-slate-400"}`}
             >
               Home
             </button>
             <button
               id="nav-link-categories"
               onClick={() => setActiveSection("categories")}
-              className={`hover:text-black transition-colors duration-200 cursor-pointer ${activeSection === "categories" ? "text-black border-b-2 border-black pb-1.5" : "text-slate-400"}`}
+              className={`hover:text-black dark:hover:text-white transition-colors duration-200 cursor-pointer ${activeSection === "categories" ? "text-black dark:text-white border-b-2 border-black dark:border-white pb-1.5" : "text-slate-400"}`}
             >
               Catalog
             </button>
             <button
               id="nav-link-wishlist"
               onClick={() => setActiveSection("wishlist")}
-              className={`hover:text-black transition-colors duration-200 cursor-pointer flex items-center gap-1 ${activeSection === "wishlist" ? "text-black border-b-2 border-black pb-1.5" : "text-slate-400"}`}
+              className={`hover:text-black dark:hover:text-white transition-colors duration-200 cursor-pointer flex items-center gap-1 ${activeSection === "wishlist" ? "text-black dark:text-white border-b-2 border-black dark:border-white pb-1.5" : "text-slate-400"}`}
             >
               <span>Curations</span>
               {wishlistCount > 0 && (
-                <span className="bg-neutral-200 text-neutral-800 text-[9px] font-black px-1.5 py-0.5 rounded-full">
+                <span className="bg-neutral-200 dark:bg-slate-800 text-neutral-800 dark:text-slate-200 text-[9px] font-black px-1.5 py-0.5 rounded-full">
                   {wishlistCount}
                 </span>
               )}
@@ -141,7 +145,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeSection, setActiveSection 
             <button
               id="nav-link-cart"
               onClick={() => setActiveSection("cart")}
-              className={`hover:text-black transition-colors duration-200 cursor-pointer flex items-center gap-1.5 ${activeSection === "cart" ? "text-black border-b-2 border-black pb-1.5" : "text-slate-400"}`}
+              className={`hover:text-black dark:hover:text-white transition-colors duration-200 cursor-pointer flex items-center gap-1.5 ${activeSection === "cart" ? "text-black dark:text-white border-b-2 border-black dark:border-white pb-1.5" : "text-slate-400"}`}
             >
               <span>Bag</span>
               {cartCount > 0 ? (
@@ -149,13 +153,13 @@ export const Navbar: React.FC<NavbarProps> = ({ activeSection, setActiveSection 
                   {cartCount}
                 </span>
               ) : (
-                <span className="text-slate-300 font-light">0</span>
+                <span className="text-slate-300 dark:text-slate-600 font-light">0</span>
               )}
             </button>
             <button
               id="nav-link-profile"
               onClick={() => setActiveSection("profile")}
-              className={`hover:text-black transition-colors duration-200 cursor-pointer ${activeSection === "profile" ? "text-black border-b-2 border-black pb-1.5" : "text-slate-400"}`}
+              className={`hover:text-black dark:hover:text-white transition-colors duration-200 cursor-pointer ${activeSection === "profile" ? "text-black dark:text-white border-b-2 border-black dark:border-white pb-1.5" : "text-slate-400"}`}
             >
               Profile
             </button>
@@ -170,9 +174,9 @@ export const Navbar: React.FC<NavbarProps> = ({ activeSection, setActiveSection 
                 placeholder="Search catalog..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-100 hover:border-slate-200 focus:border-black/50 focus:bg-white text-xs px-4 py-2 pl-9 rounded-full transition-all duration-300 outline-none text-black placeholder-slate-400"
+                className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 hover:border-slate-200 dark:hover:border-slate-700 focus:border-black/50 dark:focus:border-white/50 focus:bg-white dark:focus:bg-slate-950 text-xs px-4 py-2 pl-9 rounded-full transition-all duration-300 outline-none text-black dark:text-white placeholder-slate-400"
               />
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 stroke-[2]" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 dark:text-slate-500 stroke-[2]" />
               {searchQuery && (
                 <button
                   id="btn-clear-search"
@@ -235,12 +239,12 @@ export const Navbar: React.FC<NavbarProps> = ({ activeSection, setActiveSection 
               </div>
             </button>
             
-            {/* AI Assistant Button (Display "Coming Soon" elegantly next to or inside) */}
+            {/* AI Assistant Button */}
             <div className="relative group">
               <button
                 id="btn-ai-assistant-header"
                 onClick={() => setActiveSection("ai")}
-                className={`p-2 sm:p-2.5 rounded-full border transition duration-300 relative cursor-pointer flex items-center gap-1.5 ${activeSection === "ai" ? "bg-[#34C759]/10 border-[#34C759]/30 text-black" : "text-slate-600 hover:text-black bg-slate-50 hover:bg-slate-100 border-slate-100"}`}
+                className={`p-2 sm:p-2.5 rounded-full border transition duration-300 relative cursor-pointer flex items-center gap-1.5 ${activeSection === "ai" ? "bg-[#34C759]/10 border-[#34C759]/30 text-black dark:text-white" : "text-slate-600 dark:text-slate-300 hover:text-black dark:hover:text-white bg-slate-50 dark:bg-slate-900 border-slate-100 dark:border-slate-800"}`}
               >
                 <Sparkles className="h-4 w-4 text-[#34C759] animate-pulse" />
                 <span className="hidden sm:inline text-[9px] uppercase font-bold tracking-widest text-[#34C759] bg-[#34C759]/10 px-2 py-0.5 rounded-full border border-[#34C759]/20">
@@ -254,12 +258,23 @@ export const Navbar: React.FC<NavbarProps> = ({ activeSection, setActiveSection 
               </div>
             </div>
 
+            {/* Premium Theme Switcher Button */}
+            <button
+              id="btn-theme-toggle-header"
+              type="button"
+              onClick={toggleTheme}
+              className="p-2.5 text-slate-600 dark:text-slate-300 hover:text-black dark:hover:text-white bg-slate-50 dark:bg-slate-900 rounded-full border border-slate-100 dark:border-slate-800 transition cursor-pointer"
+              title={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            >
+              {theme === "dark" ? <Sun className="h-4 w-4 text-amber-400" /> : <Moon className="h-4 w-4 text-indigo-500" />}
+            </button>
+
             {/* Notifications Button */}
             <div className="relative">
               <button
                 id="btn-notifications-header"
                 onClick={() => setOpenNotifications(!openNotifications)}
-                className="p-2.5 text-slate-600 hover:text-black bg-slate-50 hover:bg-slate-100 rounded-full border border-slate-100 transition relative cursor-pointer"
+                className="p-2.5 text-slate-600 dark:text-slate-300 hover:text-black dark:hover:text-white bg-slate-50 dark:bg-slate-900 rounded-full border border-slate-100 dark:border-slate-800 transition relative cursor-pointer"
               >
                 <Bell className="h-4 w-4" />
                 {unreadCount > 0 && (

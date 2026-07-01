@@ -82,3 +82,109 @@ self.addEventListener("notificationclick", (event) => {
 
   event.waitUntil(promiseChain);
 });
+
+// ==========================================================
+// OFFLINE SUPPORT & PWA CACHING STRATEGY
+// ==========================================================
+const CACHE_NAME = "nayel-basket-v1";
+const STATIC_ASSETS = [
+  "/",
+  "/index.html",
+  "/src/main.tsx",
+  "/src/App.tsx",
+  "/src/index.css",
+  "/metadata.json"
+];
+
+// 1. Install event: Cache core skeletal files
+self.addEventListener("install", (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      console.log("[Service Worker] Pre-caching offline skeleton assets...");
+      return cache.addAll(STATIC_ASSETS).catch((err) => {
+        console.warn("[Service Worker] Pre-cache warning (some files may compile dynamically):", err);
+      });
+    })
+  );
+  self.skipWaiting();
+});
+
+// 2. Activate event: Clean older cache versions
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((name) => {
+          if (name !== CACHE_NAME) {
+            console.log("[Service Worker] Destroying legacy cache:", name);
+            return caches.delete(name);
+          }
+        })
+      );
+    })
+  );
+  self.clients.claim();
+});
+
+// 3. Fetch event: Stale-While-Revalidate with network failover
+self.addEventListener("fetch", (event) => {
+  const req = event.request;
+  const url = new URL(req.url);
+
+  // Bypass chrome-extension or other external non-http schemas
+  if (!req.url.startsWith("http")) return;
+
+  // For live API endpoints, use Network-First, with a custom offline mock response if server is fully offline
+  if (url.pathname.startsWith("/api/")) {
+    event.respondWith(
+      fetch(req)
+        .then((res) => {
+          // Clone and cache successful GET responses
+          if (res.status === 200 && req.method === "GET") {
+            const resClone = res.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(req, resClone));
+          }
+          return res;
+        })
+        .catch(() => {
+          // If offline, try cached API or return offline-friendly JSON
+          return caches.match(req).then((cachedRes) => {
+            if (cachedRes) return cachedRes;
+            
+            // Fallback JSON for health check and general APIs
+            if (url.pathname.includes("/api/health")) {
+              return new Response(JSON.stringify({ status: "offline_synced", time: new Date().toISOString() }), {
+                headers: { "Content-Type": "application/json" }
+              });
+            }
+            return new Response(JSON.stringify({ 
+              error: "You are currently offline. Live AI and payments will resume once internet connection is restored.",
+              offline: true 
+            }), {
+              headers: { "Content-Type": "application/json" }
+            });
+          });
+        })
+    );
+    return;
+  }
+
+  // Stale-While-Revalidate for static assets
+  event.respondWith(
+    caches.match(req).then((cachedResponse) => {
+      const fetchPromise = fetch(req).then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200) {
+          const responseClone = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(req, responseClone);
+          });
+        }
+        return networkResponse;
+      }).catch((err) => {
+        console.log("[Service Worker] Network request failed; serving cached copy if present.", err);
+      });
+
+      return cachedResponse || fetchPromise;
+    })
+  );
+});

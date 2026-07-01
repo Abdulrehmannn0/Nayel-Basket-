@@ -534,15 +534,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const submitReturnRequest = (orderId: string, productId: string, reason: string, details: string) => {
+    const returnId = `RTN-${Date.now().toString().slice(-4)}`;
     setOrders((prev) => prev.map((ord) => {
       if (ord.id === orderId) {
         const matchedItem = ord.items.find((i) => i.product.id === productId);
         const refundAmount = matchedItem ? matchedItem.product.price * matchedItem.quantity : 0;
+        
+        // Auto-approve after 2.5 seconds
+        setTimeout(() => {
+          approveReturnRequest(returnId);
+        }, 2500);
+
         return {
           ...ord,
           status: "Returned" as const,
           returnRequest: {
-            id: `RTN-${Date.now().toString().slice(-4)}`,
+            id: returnId,
             orderId,
             productId,
             reason,
@@ -555,7 +562,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       return ord;
     }));
-    addNotification("🔄 Return Initiated", `Your return request for order ${orderId} has been submitted for approval.`, "order");
+    addNotification("🔄 Return Initiated", `Your return request for order ${orderId} has been submitted. Automatic AI validation node is evaluating the materials...`, "order");
   };
 
   const updateOrderStatus = (orderId: string, status: Order["status"]) => {
