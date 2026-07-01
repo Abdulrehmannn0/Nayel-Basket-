@@ -73,7 +73,7 @@ interface SidebarItem {
 interface AdminSidebarProps {
   activeTab: AdminTab;
   setActiveTab: (tab: AdminTab) => void;
-  adminUser: { email: string; role: "admin" | "manager" | "staff" };
+  adminUser: { email: string; role: "super_admin" | "admin" | "manager" | "staff" | "customer" };
   onLogout: () => void;
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;

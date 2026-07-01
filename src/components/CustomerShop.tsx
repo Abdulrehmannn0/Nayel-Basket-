@@ -3,12 +3,20 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useApp } from "../context/AppContext";
 import { Product, CartItem, Address, Order } from "../types";
 import { ProductCard } from "./ProductCard";
 import { ProductDetail } from "./ProductDetail";
 import { AIChat } from "./AIChat";
+import { 
+  isNotificationSupported,
+  requestNotificationPermission,
+  getFcmToken,
+  onForegroundMessage,
+  logAnalyticsEvent,
+  logCrashlyticsError
+} from "../lib/firebase";
 import { 
   Search, 
   MapPin, 
@@ -27,7 +35,12 @@ import {
   ArrowRight,
   ChevronRight,
   ShieldCheck,
-  Tag
+  Tag,
+  Bell,
+  Copy,
+  Bug,
+  Activity,
+  Smartphone
 } from "lucide-react";
 
 interface CustomerShopProps {
@@ -73,7 +86,66 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [homeCollectionTab, setHomeCollectionTab] = useState<"trending" | "bestsellers" | "newarrivals" | "editors">("trending");
-  const [activeProfileTab, setActiveProfileTab] = useState<"dashboard" | "orders" | "wishlist" | "addresses" | "coupons" | "ambassador" | "concierge">("dashboard");
+  const [activeProfileTab, setActiveProfileTab] = useState<"dashboard" | "orders" | "wishlist" | "addresses" | "coupons" | "ambassador" | "concierge" | "notifications" | "security">("dashboard");
+
+  // Splash and Customer Authentication state
+  const [showSplash, setShowSplash] = useState(true);
+  const [customerUser, setCustomerUser] = useState<any>(() => {
+    const saved = localStorage.getItem("nb_customer_user");
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [authTab, setAuthTab] = useState<"signin" | "signup" | "forgot">("signin");
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authName, setAuthName] = useState("");
+  const [authPhone, setAuthPhone] = useState("");
+  const [authRememberMe, setAuthRememberMe] = useState(true);
+  const [authReferralCode, setAuthReferralCode] = useState("");
+  
+  // Biometric/Passkeys simulated state
+  const [showBiometricPrompt, setShowBiometricPrompt] = useState(false);
+  const [biometricPromptType, setBiometricPromptType] = useState<"face" | "fingerprint">("face");
+  const [isBiometricRegistered, setIsBiometricRegistered] = useState(() => {
+    return localStorage.getItem("nb_biometric_registered") === "true";
+  });
+
+  // Forgot Password state
+  const [forgotStep, setForgotStep] = useState<1 | 2>(1);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotOtp, setForgotOtp] = useState("");
+  const [forgotOtpInput, setForgotOtpInput] = useState("");
+  const [forgotNewPass, setForgotNewPass] = useState("");
+
+  // Device & Sessions history states
+  const [sessionDevices, setSessionDevices] = useState<any[]>(() => {
+    const saved = localStorage.getItem("nb_session_devices");
+    if (saved) return JSON.parse(saved);
+    return [
+      { id: "dev_1", name: "iPhone 15 Pro (Safari)", location: "San Francisco, USA", ip: "192.168.1.104", current: true, date: "Active Session" },
+      { id: "dev_2", name: "Windows 11 (Chrome Desktop)", location: "New York, USA", ip: "172.56.21.90", current: false, date: "2026-06-30 18:24" },
+      { id: "dev_3", name: "iPad Pro (iOS App Container)", location: "London, UK", ip: "84.22.109.11", current: false, date: "2026-06-28 09:12" }
+    ];
+  });
+  const [loginHistory, setLoginHistory] = useState<any[]>(() => {
+    const saved = localStorage.getItem("nb_login_history");
+    if (saved) return JSON.parse(saved);
+    return [
+      { date: "2026-07-01 10:41", device: "iPhone 15 Pro", location: "San Francisco, USA", status: "Success (Biometrics)" },
+      { date: "2026-06-30 18:24", device: "Windows 11 (Chrome Desktop)", location: "New York, USA", status: "Success (Password)" },
+      { date: "2026-06-29 15:30", device: "iPhone 15 Pro", location: "San Francisco, USA", status: "Success (Passkey)" },
+      { date: "2026-06-28 09:12", device: "iPad Pro", location: "London, UK", status: "Success (Password)" }
+    ];
+  });
+
+  // FCM, Analytics & Crashlytics States
+  const [fcmToken, setFcmTokenState] = useState<string>(() => localStorage.getItem("nb_fcm_token") || "");
+  const [notiPermission, setNotiPermission] = useState<NotificationPermission>(
+    typeof Notification !== "undefined" ? Notification.permission : "default"
+  );
+  const [notificationLogs, setNotificationLogs] = useState<any[]>([]);
+  const [telemetryLogs, setTelemetryLogs] = useState<string[]>(["[System] Telemetry initialized.", "[System] Supabase is primary backend."]);
+  const [customEvent, setCustomEvent] = useState("");
+  const [customEventParams, setCustomEventParams] = useState("");
 
   // Checkout states
   const [checkoutAddressId, setCheckoutAddressId] = useState(addresses[0]?.id || "");
@@ -97,6 +169,57 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
   const [returnReason, setReturnReason] = useState("Defective Item");
   const [returnDetails, setReturnDetails] = useState("");
   const [showReturnForm, setShowReturnForm] = useState(false);
+
+  // Splash Screen timeout trigger
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowSplash(false);
+      setTelemetryLogs((prev) => [...prev, "[System] Customer Splash complete. Rendering Main Portal."]);
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Dispatch custom event when customerUser state changes to keep Navbar in sync
+  useEffect(() => {
+    window.dispatchEvent(new Event("customer-user-changed"));
+  }, [customerUser]);
+
+  // Initialize Firebase Messaging foreground listeners
+  useEffect(() => {
+    // 1. Log initialization telemetry
+    setTelemetryLogs((prev) => [...prev, `[Firebase] Foreground listener registered successfully.`]);
+
+    // 2. Register real FCM foreground listener
+    const unsubscribe = onForegroundMessage((payload) => {
+      const title = payload.notification?.title || "Nayel Basket Update";
+      const body = payload.notification?.body || "New curation has arrived!";
+      
+      // Update UI Logs
+      setNotificationLogs((prev) => [
+        {
+          id: Date.now().toString(),
+          title,
+          body,
+          timestamp: new Date().toLocaleTimeString(),
+          type: "foreground"
+        },
+        ...prev
+      ]);
+
+      // Add to global notifications drop down
+      addNotification(title, body, "system");
+
+      // Log Telemetry
+      setTelemetryLogs((prev) => [
+        ...prev,
+        `[FCM Broadcast] Received Foreground Notification: "${title}"`
+      ]);
+    });
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, []);
 
   // Categories catalog list
   const categoriesList = [
@@ -164,6 +287,13 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
   };
 
   const handlePlaceOrder = () => {
+    if (!customerUser) {
+      addNotification("🔑 Login Required", "Please sign in or create an account to place orders securely.", "system");
+      setActiveSection("profile");
+      setAuthTab("signin");
+      return;
+    }
+
     const matchedAddress = addresses.find((a) => a.id === checkoutAddressId) || addresses[0];
     if (!matchedAddress) {
       alert("Please specify a valid delivery address.");
@@ -193,6 +323,39 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
     setSelectedProduct(product);
     addToRecentlyViewed(product);
   };
+
+  // Render Splash screen on application launch
+  if (showSplash) {
+    return (
+      <div className="fixed inset-0 z-[100] bg-white text-black flex flex-col items-center justify-center animate-fade-in font-sans">
+        <div className="flex flex-col items-center max-w-xs space-y-6 text-center">
+          {/* Elegant Luxury Nayel Basket Monogram */}
+          <div className="relative flex items-center justify-center w-24 h-24 bg-black rounded-[2rem] text-white shadow-2xl animate-pulse-scale">
+            <span className="text-4xl font-black tracking-widest font-sans">N</span>
+            <div className="absolute inset-0 border border-slate-200/20 rounded-[2rem] animate-ping opacity-25"></div>
+          </div>
+          
+          <div className="space-y-2">
+            <h1 className="text-lg font-black tracking-[0.2em] text-neutral-900 uppercase animate-fade-in">
+              NAYEL BASKET
+            </h1>
+            <p className="text-[10px] text-slate-400 font-bold tracking-[0.15em] uppercase">
+              Bespoke Artisanal Home Decor
+            </p>
+          </div>
+
+          {/* Luxury Loading Progress Bar */}
+          <div className="w-40 h-0.5 bg-neutral-100 rounded-full overflow-hidden relative">
+            <div className="absolute top-0 left-0 h-full bg-black rounded-full animate-loading-bar w-full"></div>
+          </div>
+
+          <span className="text-[8px] font-mono text-slate-400 tracking-wider block pt-2">
+            SECURE CLIENT PORTAL v4.1 • EST. 2026
+          </span>
+        </div>
+      </div>
+    );
+  }
 
   // Render Product detail view if active
   if (selectedProduct) {
@@ -1011,15 +1174,455 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
       )}
 
       {/* CLIENT ACCOUNT PROFILE SECTION */}
-      {activeSection === "profile" && (
+      {activeSection === "profile" && !customerUser && (
+        <div className="max-w-md mx-auto py-12 px-6 animate-fade-in text-black bg-white">
+          <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-xl space-y-6">
+            
+            {/* Logo header */}
+            <div className="text-center space-y-2">
+              <div className="inline-flex items-center justify-center w-14 h-14 bg-black rounded-2xl text-white shadow-md mx-auto mb-2">
+                <span className="text-xl font-black font-sans tracking-widest">N</span>
+              </div>
+              <h2 className="text-xl font-black tracking-wider uppercase text-neutral-900">NAYEL BASKET PORTAL</h2>
+              <p className="text-xs text-slate-400 font-sans">Bespoke luxury connoisseur account access</p>
+            </div>
+
+            {/* Tab selector */}
+            {authTab !== "forgot" && (
+              <div className="flex bg-[#F7F7F7] p-1 rounded-xl">
+                <button
+                  id="btn-auth-tab-signin"
+                  onClick={() => setAuthTab("signin")}
+                  className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer ${
+                    authTab === "signin"
+                      ? "bg-white text-black shadow-sm"
+                      : "text-slate-400 hover:text-black"
+                  }`}
+                >
+                  Sign In
+                </button>
+                <button
+                  id="btn-auth-tab-signup"
+                  onClick={() => setAuthTab("signup")}
+                  className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer ${
+                    authTab === "signup"
+                      ? "bg-white text-black shadow-sm"
+                      : "text-slate-400 hover:text-black"
+                  }`}
+                >
+                  Create Account
+                </button>
+              </div>
+            )}
+
+            {/* Tab 1: Sign In */}
+            {authTab === "signin" && (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const user = {
+                    name: authEmail === "alex.rivera@nayelbasket.com" ? "Alex Rivera" : authEmail.split("@")[0].replace(".", " "),
+                    email: authEmail,
+                    phone: "+1 (555) 321-9876",
+                    tier: "Elite Patron tier",
+                    patronId: `#NB-${Math.floor(10000 + Math.random() * 90000)}-ELITE`,
+                    joinedDate: new Date().toLocaleDateString()
+                  };
+                  setCustomerUser(user);
+                  if (authRememberMe) {
+                    localStorage.setItem("nb_customer_user", JSON.stringify(user));
+                  }
+                  
+                  const loginEvent = {
+                    date: new Date().toISOString().replace("T", " ").substring(0, 16),
+                    device: "iPhone 15 Pro",
+                    location: "San Francisco, USA",
+                    status: "Success (Password)"
+                  };
+                  setLoginHistory((prev) => [loginEvent, ...prev]);
+                  localStorage.setItem("nb_login_history", JSON.stringify([loginEvent, ...loginHistory]));
+                  
+                  addNotification("✨ Welcome Back", `Successfully signed in as ${user.name}`, "system");
+                }}
+                className="space-y-4"
+              >
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Email Address</label>
+                  <input
+                    id="input-auth-email"
+                    type="email"
+                    required
+                    placeholder="e.g., alex.rivera@nayelbasket.com"
+                    className="w-full bg-[#F7F7F7] border border-slate-200 focus:border-black/50 focus:bg-white rounded-xl px-4 py-3 text-xs focus:outline-none transition-all"
+                    value={authEmail}
+                    onChange={(e) => setAuthEmail(e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex justify-between items-center">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Password</label>
+                    <button
+                      id="btn-forgot-pass-trigger"
+                      type="button"
+                      onClick={() => {
+                        setAuthTab("forgot");
+                        setForgotStep(1);
+                      }}
+                      className="text-[10px] font-bold text-slate-400 hover:text-black hover:underline cursor-pointer"
+                    >
+                      Forgot?
+                    </button>
+                  </div>
+                  <input
+                    id="input-auth-password"
+                    type="password"
+                    required
+                    placeholder="Enter security passcode"
+                    className="w-full bg-[#F7F7F7] border border-slate-200 focus:border-black/50 focus:bg-white rounded-xl px-4 py-3 text-xs focus:outline-none transition-all"
+                    value={authPassword}
+                    onChange={(e) => setAuthPassword(e.target.value)}
+                  />
+                </div>
+
+                <div className="flex justify-between items-center py-1">
+                  <label className="flex items-center gap-2 text-xs text-slate-500 cursor-pointer">
+                    <input
+                      id="checkbox-remember-me"
+                      type="checkbox"
+                      checked={authRememberMe}
+                      onChange={(e) => setAuthRememberMe(e.target.checked)}
+                      className="accent-black rounded"
+                    />
+                    <span>Remember me on this device</span>
+                  </label>
+                </div>
+
+                <button
+                  id="btn-auth-signin"
+                  type="submit"
+                  className="w-full bg-black hover:bg-neutral-800 text-white font-bold py-3.5 rounded-2xl text-xs tracking-widest uppercase cursor-pointer transition-all shadow-md"
+                >
+                  SECURE PASSWORD LOG IN
+                </button>
+
+                {/* Simulated WebAuthn / Face Unlock Button */}
+                <div className="relative flex py-2 items-center">
+                  <div className="flex-grow border-t border-slate-200"></div>
+                  <span className="flex-shrink mx-4 text-[9px] font-bold uppercase text-slate-400 tracking-widest font-mono">BIOMETRIC SECURE LINK</span>
+                  <div className="flex-grow border-t border-slate-200"></div>
+                </div>
+
+                <button
+                  id="btn-biometric-unlock"
+                  type="button"
+                  onClick={() => {
+                    setBiometricPromptType("face");
+                    setShowBiometricPrompt(true);
+                    
+                    setTimeout(() => {
+                      setShowBiometricPrompt(false);
+                      const user = {
+                        name: "Alex Rivera",
+                        email: "alex.rivera@nayelbasket.com",
+                        phone: "+1 (555) 321-9876",
+                        tier: "Elite Patron tier",
+                        patronId: "#NB-82901-ELITE",
+                        joinedDate: "2026-06-29"
+                      };
+                      setCustomerUser(user);
+                      localStorage.setItem("nb_customer_user", JSON.stringify(user));
+                      
+                      const loginEvent = {
+                        date: new Date().toISOString().replace("T", " ").substring(0, 16),
+                        device: "iPhone 15 Pro",
+                        location: "San Francisco, USA",
+                        status: "Success (Face ID)"
+                      };
+                      setLoginHistory((prev) => [loginEvent, ...prev]);
+                      localStorage.setItem("nb_login_history", JSON.stringify([loginEvent, ...loginHistory]));
+                      
+                      addNotification("✨ Welcome Back", "Securely logged in using Face ID unlock credentials.", "system");
+                    }, 2200);
+                  }}
+                  className="w-full bg-[#34C759]/10 hover:bg-[#34C759]/15 text-[#2cb04e] border border-[#34C759]/20 font-bold py-3 rounded-2xl text-xs tracking-wider uppercase flex items-center justify-center gap-2 cursor-pointer transition-all animate-pulse"
+                >
+                  <Sparkles className="h-4 w-4 text-[#34C759] animate-pulse" />
+                  <span>Face ID / Fingerprint Unlock</span>
+                </button>
+
+                <button
+                  id="btn-bypass-auth"
+                  type="button"
+                  onClick={() => {
+                    const user = {
+                      name: "Alex Rivera",
+                      email: "alex.rivera@nayelbasket.com",
+                      phone: "+1 (555) 321-9876",
+                      tier: "Elite Patron tier",
+                      patronId: "#NB-82901-ELITE",
+                      joinedDate: "2026-06-29"
+                    };
+                    setCustomerUser(user);
+                    localStorage.setItem("nb_customer_user", JSON.stringify(user));
+                    addNotification("✨ Quick Session", "Logged in using quick credential evaluation.", "system");
+                  }}
+                  className="w-full text-center text-[10px] text-slate-400 hover:text-black font-semibold uppercase tracking-wider underline cursor-pointer mt-2"
+                >
+                  Quick Sign-in as Alex Rivera
+                </button>
+              </form>
+            )}
+
+            {/* Tab 2: Create Account (Sign Up) */}
+            {authTab === "signup" && (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const pid = `#NB-${Math.floor(10000 + Math.random() * 90000)}-PATRON`;
+                  const user = {
+                    name: authName,
+                    email: authEmail,
+                    phone: authPhone || "+1 (555) 000-0000",
+                    tier: "Exclusive Patron tier",
+                    patronId: pid,
+                    joinedDate: new Date().toLocaleDateString()
+                  };
+                  setCustomerUser(user);
+                  localStorage.setItem("nb_customer_user", JSON.stringify(user));
+                  
+                  if (authReferralCode.trim().toUpperCase() === "NAYEL-SHARE-30") {
+                    addWalletFunds(30);
+                    addNotification("🎁 Ambassador Referral Credit Applied", "Successfully linked referral code! You received $30.00 inside your Luxury Wallet.", "promo");
+                  } else {
+                    addNotification("✨ Account Formed", `Welcome to Nayel Basket, ${user.name}!`, "system");
+                  }
+                  
+                  const loginEvent = {
+                    date: new Date().toISOString().replace("T", " ").substring(0, 16),
+                    device: "iPhone 15 Pro",
+                    location: "San Francisco, USA",
+                    status: "Registered Account"
+                  };
+                  setLoginHistory((prev) => [loginEvent, ...prev]);
+                  localStorage.setItem("nb_login_history", JSON.stringify([loginEvent, ...loginHistory]));
+                }}
+                className="space-y-4"
+              >
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Full Name</label>
+                  <input
+                    id="input-signup-name"
+                    type="text"
+                    required
+                    placeholder="Enter your first and last name"
+                    className="w-full bg-[#F7F7F7] border border-slate-200 focus:border-black/50 focus:bg-white rounded-xl px-4 py-3 text-xs focus:outline-none transition-all"
+                    value={authName}
+                    onChange={(e) => setAuthName(e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Email Address</label>
+                  <input
+                    id="input-signup-email"
+                    type="email"
+                    required
+                    placeholder="Enter your security email"
+                    className="w-full bg-[#F7F7F7] border border-slate-200 focus:border-black/50 focus:bg-white rounded-xl px-4 py-3 text-xs focus:outline-none transition-all"
+                    value={authEmail}
+                    onChange={(e) => setAuthEmail(e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Phone Coordinate</label>
+                  <input
+                    id="input-signup-phone"
+                    type="tel"
+                    placeholder="e.g., +1 (555) 000-0000"
+                    className="w-full bg-[#F7F7F7] border border-slate-200 focus:border-black/50 focus:bg-white rounded-xl px-4 py-3 text-xs focus:outline-none transition-all"
+                    value={authPhone}
+                    onChange={(e) => setAuthPhone(e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Password</label>
+                  <input
+                    id="input-signup-password"
+                    type="password"
+                    required
+                    placeholder="Create a strong password code"
+                    className="w-full bg-[#F7F7F7] border border-slate-200 focus:border-black/50 focus:bg-white rounded-xl px-4 py-3 text-xs focus:outline-none transition-all"
+                    value={authPassword}
+                    onChange={(e) => setAuthPassword(e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Ambassador Referral Code (Optional)</label>
+                  <input
+                    id="input-signup-referral"
+                    type="text"
+                    placeholder="e.g., NAYEL-SHARE-30"
+                    className="w-full bg-[#F7F7F7] border border-slate-200 focus:border-black/50 focus:bg-white rounded-xl px-4 py-3 text-xs uppercase font-mono font-bold focus:outline-none transition-all"
+                    value={authReferralCode}
+                    onChange={(e) => setAuthReferralCode(e.target.value)}
+                  />
+                  {authReferralCode.trim().toUpperCase() === "NAYEL-SHARE-30" && (
+                    <span className="text-[9px] text-[#34C759] font-mono block mt-1">✓ Valid Ambassador Code: You will receive $30.00 upon profile launch!</span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2 py-1">
+                  <input
+                    id="checkbox-signup-biometric"
+                    type="checkbox"
+                    checked={isBiometricRegistered}
+                    onChange={(e) => {
+                      setIsBiometricRegistered(e.target.checked);
+                      localStorage.setItem("nb_biometric_registered", e.target.checked ? "true" : "false");
+                    }}
+                    className="accent-black rounded"
+                  />
+                  <span className="text-xs text-slate-500">Enable Face ID / fingerprint passkey registration</span>
+                </div>
+
+                <button
+                  id="btn-auth-signup"
+                  type="submit"
+                  className="w-full bg-black hover:bg-neutral-800 text-white font-bold py-3.5 rounded-2xl text-xs tracking-widest uppercase cursor-pointer transition-all shadow-md"
+                >
+                  VERIFY & REGISTER ACCOUNT
+                </button>
+              </form>
+            )}
+
+            {/* Tab 3: Password Reset Form */}
+            {authTab === "forgot" && (
+              <div className="space-y-4">
+                <div className="flex justify-between items-center border-b pb-3">
+                  <h3 className="text-xs font-bold text-black uppercase tracking-wider font-mono">Reset Passcode</h3>
+                  <button
+                    id="btn-cancel-reset"
+                    onClick={() => setAuthTab("signin")}
+                    className="text-slate-400 hover:text-black font-bold uppercase text-[10px] tracking-wider cursor-pointer"
+                  >
+                    ← Back
+                  </button>
+                </div>
+
+                {forgotStep === 1 ? (
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      if (!forgotEmail) return;
+                      const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+                      setForgotOtp(generatedOtp);
+                      setForgotStep(2);
+                      addNotification("🔑 Reset Security OTP", `Your password reset verification code is: ${generatedOtp}`, "system");
+                    }}
+                    className="space-y-4"
+                  >
+                    <p className="text-xs text-slate-500 leading-relaxed font-sans">
+                      Provide your luxury connoisseur email below. We will dispatch a secure 6-digit numeric verification OTP code to authorize reset protocols.
+                    </p>
+                    
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Registered Email Address</label>
+                      <input
+                        id="input-reset-email"
+                        type="email"
+                        required
+                        placeholder="e.g., alex.rivera@nayelbasket.com"
+                        className="w-full bg-[#F7F7F7] border border-slate-200 focus:border-black/50 focus:bg-white rounded-xl px-4 py-3 text-xs focus:outline-none"
+                        value={forgotEmail}
+                        onChange={(e) => setForgotEmail(e.target.value)}
+                      />
+                    </div>
+
+                    <button
+                      id="btn-send-reset-otp"
+                      type="submit"
+                      className="w-full bg-black hover:bg-neutral-800 text-white font-bold py-3.5 rounded-2xl text-xs tracking-wider uppercase cursor-pointer transition-all"
+                    >
+                      DISPATCH VERIFICATION OTP
+                    </button>
+                  </form>
+                ) : (
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      if (forgotOtpInput !== forgotOtp) {
+                        alert("The verification security code is incorrect. Please check notifications.");
+                        return;
+                      }
+                      addNotification("🛡️ Passcode Configured", "Your custom luxury passcode has been safely configured.", "system");
+                      setAuthTab("signin");
+                      setForgotStep(1);
+                      setForgotEmail("");
+                      setForgotOtpInput("");
+                    }}
+                    className="space-y-4"
+                  >
+                    <p className="text-xs text-slate-500 leading-relaxed font-sans">
+                      Input the 6-digit verification code sent via in-app notifications, and enter your new luxury secure passcode.
+                    </p>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Verification Security Code</label>
+                      <input
+                        id="input-reset-otp"
+                        type="text"
+                        required
+                        maxLength={6}
+                        placeholder="Enter 6-digit OTP"
+                        className="w-full bg-[#F7F7F7] border border-slate-200 focus:border-black/50 focus:bg-white rounded-xl px-4 py-3 text-xs focus:outline-none text-center font-mono font-bold tracking-widest"
+                        value={forgotOtpInput}
+                        onChange={(e) => setForgotOtpInput(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">New Password</label>
+                      <input
+                        id="input-reset-new-password"
+                        type="password"
+                        required
+                        placeholder="Enter new secure passcode"
+                        className="w-full bg-[#F7F7F7] border border-slate-200 focus:border-black/50 focus:bg-white rounded-xl px-4 py-3 text-xs focus:outline-none"
+                        value={forgotNewPass}
+                        onChange={(e) => setForgotNewPass(e.target.value)}
+                      />
+                    </div>
+
+                    <button
+                      id="btn-submit-reset-password"
+                      type="submit"
+                      className="w-full bg-[#34C759] hover:bg-[#2eb04e] text-white font-bold py-3.5 rounded-2xl text-xs tracking-wider uppercase cursor-pointer transition-all shadow"
+                    >
+                      UPDATE PASSCODE SECURELY
+                    </button>
+                  </form>
+                )}
+              </div>
+            )}
+
+          </div>
+        </div>
+      )}
+
+      {/* CLIENT ACCOUNT PROFILE SECTION (LOGGED IN) */}
+      {activeSection === "profile" && customerUser && (
         <div className="space-y-8 pb-16 animate-fade-in bg-white">
           
           {/* User Profile header */}
           <div className="bg-[#F7F7F7] border border-slate-100 rounded-[2rem] p-8 flex flex-col md:flex-row justify-between items-center gap-8 shadow-sm">
             <div className="flex items-center gap-6 flex-col sm:flex-row text-center sm:text-left">
               <div className="relative group">
-                <div className="w-24 h-24 rounded-full bg-neutral-900 border-4 border-white flex items-center justify-center text-white text-3xl font-black font-sans shadow-lg">
-                  AR
+                <div className="w-24 h-24 rounded-full bg-neutral-900 border-4 border-white flex items-center justify-center text-white text-3xl font-black font-sans shadow-lg uppercase select-none">
+                  {customerUser.name.split(" ").map((n: any) => n[0]).join("").substring(0, 2)}
                 </div>
                 <div className="absolute -bottom-1 -right-1 bg-[#34C759] text-white p-1.5 rounded-full border-2 border-white text-[10px] shadow">
                   <Sparkles className="h-3 w-3" />
@@ -1028,13 +1631,13 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
               
               <div className="space-y-1">
                 <div className="flex flex-col sm:flex-row items-center gap-2">
-                  <h2 className="text-2xl font-black text-black font-sans tracking-tight">Alex Rivera</h2>
+                  <h2 className="text-2xl font-black text-black font-sans tracking-tight">{customerUser.name}</h2>
                   <span className="inline-flex items-center gap-1 text-[9px] font-bold text-[#34C759] bg-[#34C759]/10 border border-[#34C759]/20 px-2.5 py-0.5 rounded-full uppercase font-mono">
-                    Elite Patron tier
+                    {customerUser.tier}
                   </span>
                 </div>
-                <span className="text-xs text-slate-400 block font-sans">alex.rivera@nayelbasket.com</span>
-                <span className="text-[10px] text-slate-400 block font-mono">Patron ID: #NB-82901-ELITE</span>
+                <span className="text-xs text-slate-400 block font-sans">{customerUser.email}</span>
+                <span className="text-[10px] text-slate-400 block font-mono">{customerUser.patronId}</span>
               </div>
             </div>
 
@@ -1071,7 +1674,9 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
               { id: "addresses", label: "📍 Delivery Addresses" },
               { id: "coupons", label: "🎫 Promos & Coupons" },
               { id: "ambassador", label: "🤝 Ambassador Program" },
-              { id: "concierge", label: "💬 Bespoke Concierge" }
+              { id: "concierge", label: "💬 Bespoke Concierge" },
+              { id: "notifications", label: "🔔 FCM Notifications" },
+              { id: "security", label: "🔐 Session Security" }
             ].map((tab) => (
               <button
                 id={`btn-profile-tab-${tab.id}`}
@@ -1569,6 +2174,510 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
               </div>
             )}
 
+            {/* FIREBASE INTEGRATION & TESTING CONSOLE */}
+            {activeProfileTab === "notifications" && (
+              <div className="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm space-y-6 animate-fade-in text-black">
+                <div className="border-b pb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <div>
+                    <h3 className="text-sm font-bold text-black uppercase tracking-wider font-mono">Firebase Console Dashboard</h3>
+                    <p className="text-[11px] text-slate-400 mt-0.5">Configure, simulate and test FCM Push Notifications, Analytics and Crashlytics.</p>
+                  </div>
+                  <span className="text-[10px] font-bold text-[#34C759] bg-[#34C759]/10 border border-[#34C759]/20 px-2.5 py-1 rounded-full uppercase font-mono">
+                    Supabase Active Primary
+                  </span>
+                </div>
+
+                {/* 1. Environment & Architecture Specifications */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-[#F7F7F7] p-4 rounded-2xl border border-slate-100 space-y-2 text-xs">
+                    <span className="font-bold text-[10px] text-slate-400 uppercase tracking-wider block font-sans">Android Specifications</span>
+                    <div className="space-y-1.5 font-sans">
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Android Package ID:</span>
+                        <span className="font-mono font-bold text-black select-all bg-white px-2 py-0.5 border rounded">com.nayelbasket.app</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Primary Backend:</span>
+                        <span className="font-bold text-[#34C759]">Supabase DB (PostgreSQL)</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Firebase Native Services:</span>
+                        <span className="font-medium text-slate-800">FCM, Analytics, Crashlytics</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-[#F7F7F7] p-4 rounded-2xl border border-slate-100 space-y-2 text-xs">
+                    <span className="font-bold text-[10px] text-slate-400 uppercase tracking-wider block font-sans">Permission & Target Status</span>
+                    <div className="space-y-1.5 font-sans">
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-500">Browser Permissions:</span>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                          notiPermission === "granted" ? "bg-[#34C759]/10 text-[#34C759]" : notiPermission === "denied" ? "bg-red-400/10 text-red-500" : "bg-slate-200 text-slate-600"
+                        }`}>{notiPermission}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Platform Framework:</span>
+                        <span className="font-mono text-slate-700">React 19 + Capacitor Hybrid</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Background Worker:</span>
+                        <span className="text-[#34C759] font-medium">firebase-messaging-sw.js</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Push Notifications & FCM Token Registry */}
+                <div className="bg-[#F7F7F7] p-5 rounded-2xl border border-slate-100 space-y-4 text-xs">
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold text-[10px] text-slate-400 uppercase tracking-wider block font-sans">FCM Push Token Registry (Task 8)</span>
+                    <button
+                      id="btn-request-push-perms"
+                      onClick={async () => {
+                        const res = await requestNotificationPermission();
+                        setNotiPermission(res);
+                        setTelemetryLogs((prev) => [...prev, `[FCM] Notification request completed. Result: "${res}"`]);
+                        if (res === "granted") {
+                          addNotification("🔔 Notification Allowed", "Push notification permissions granted.", "system");
+                        }
+                      }}
+                      className="px-3 py-1 bg-black text-white rounded-lg text-[10px] font-bold uppercase hover:bg-neutral-800 transition"
+                    >
+                      Request Permissions
+                    </button>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="bg-white border p-3 rounded-xl flex items-center justify-between gap-3 font-mono text-[10px]">
+                      <div className="truncate text-slate-600 flex-1">
+                        {fcmToken ? fcmToken : "FCM Token not generated yet. Trigger generation below."}
+                      </div>
+                      {fcmToken && (
+                        <button
+                          id="btn-copy-fcm-token"
+                          onClick={() => {
+                            navigator.clipboard.writeText(fcmToken);
+                            addNotification("📋 Token Copied", "FCM Device Token copied to clipboard successfully.", "system");
+                            setTelemetryLogs((prev) => [...prev, `[FCM] Registration token copied to clipboard.`]);
+                          }}
+                          className="text-slate-400 hover:text-black transition cursor-pointer flex-shrink-0"
+                          title="Copy Token"
+                        >
+                          <Copy className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        id="btn-generate-fcm-tok"
+                        onClick={async () => {
+                          setTelemetryLogs((prev) => [...prev, `[FCM] Starting registration token retrieval...`]);
+                          const token = await getFcmToken();
+                          if (token) {
+                            setFcmTokenState(token);
+                            localStorage.setItem("nb_fcm_token", token);
+                            setTelemetryLogs((prev) => [...prev, `[FCM] Token synchronized: "${token.substring(0, 32)}..."`]);
+                            addNotification("🔑 FCM Device Registered", "FCM Registration Token generated and cached successfully.", "system");
+                          }
+                        }}
+                        className="px-4 py-2 bg-[#34C759] hover:bg-[#2eb14f] text-white rounded-xl text-[10px] font-bold uppercase transition"
+                      >
+                        Generate / Refresh FCM Token
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Push Messaging Simulation Toolkit (Task 9) */}
+                <div className="border border-slate-100 rounded-2xl p-4 space-y-4">
+                  <span className="font-bold text-[10px] text-slate-400 uppercase tracking-wider block font-sans">FCM Lifecycle Push Simulator (Task 9)</span>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {/* FOREGROUND SIMULATOR */}
+                    <div className="bg-[#F7F7F7] p-4 rounded-xl border flex flex-col justify-between gap-3 text-xs">
+                      <div>
+                        <span className="font-bold text-black block mb-1">Foreground State Push</span>
+                        <p className="text-[10px] text-slate-400 leading-relaxed">Fires an immediate push alert processed in-app while the user is actively viewing this page.</p>
+                      </div>
+                      <button
+                        id="btn-sim-foreground-push"
+                        onClick={() => {
+                          setTelemetryLogs((prev) => [...prev, `[FCM Sim] Dispatched Foreground Notification request`]);
+                          
+                          // Trigger standard web standard native notify API
+                          if (notiPermission === "granted") {
+                            try {
+                              new Notification("✨ Nayel Basket Curation Alert", {
+                                body: "Exclusive Midnight Matte ceramic vase set is now 20% off!",
+                                icon: "/assets/logo.png"
+                              });
+                            } catch (e) {
+                              console.warn("Native browser Notification trigger blocked or rejected:", e);
+                            }
+                          }
+
+                          // Trigger react foreground hook simulation
+                          const fcmMsgPayload = {
+                            notification: {
+                              title: "✨ Nayel Basket Curation Alert",
+                              body: "Exclusive Midnight Matte ceramic vase set is now 20% off!"
+                            }
+                          };
+                          // Emit event
+                          const event = new CustomEvent("nb-foreground-msg", { detail: fcmMsgPayload });
+                          window.dispatchEvent(event);
+
+                          // Local notification log
+                          setNotificationLogs((prev) => [
+                            {
+                              id: Date.now().toString(),
+                              title: "✨ Curation Alert (Foreground)",
+                              body: "Exclusive Midnight Matte ceramic vase set is now 20% off!",
+                              timestamp: new Date().toLocaleTimeString(),
+                              type: "foreground"
+                            },
+                            ...prev
+                          ]);
+                          addNotification("✨ Curation Alert", "Exclusive Midnight Matte ceramic vase set is now 20% off!", "system");
+                        }}
+                        className="w-full py-2 bg-black text-white hover:bg-neutral-800 font-bold uppercase text-[9px] tracking-wider rounded-lg transition"
+                      >
+                        Simulate Foreground Push
+                      </button>
+                    </div>
+
+                    {/* BACKGROUND SIMULATOR */}
+                    <div className="bg-[#F7F7F7] p-4 rounded-xl border flex flex-col justify-between gap-3 text-xs">
+                      <div>
+                        <span className="font-bold text-black block mb-1">Background State (5s Delay)</span>
+                        <p className="text-[10px] text-slate-400 leading-relaxed">Schedules a background notification. Press simulate, then switch tabs or minimize browser immediately to test background execution!</p>
+                      </div>
+                      <button
+                        id="btn-sim-background-push"
+                        onClick={() => {
+                          setTelemetryLogs((prev) => [...prev, `[FCM Sim] Scheduled background notification in 5 seconds. Minimize / hide tab now!`]);
+                          addNotification("⏰ Background Task Scheduled", "Background notification scheduled in 5 seconds. Please minimize your window.", "system");
+                          
+                          setTimeout(() => {
+                            if (document.visibilityState === "hidden") {
+                              setTelemetryLogs((prev) => [...prev, `[FCM Sim] Document hidden. Background push triggered through Service Worker.`]);
+                              if (notiPermission === "granted") {
+                                try {
+                                  new Notification("🔔 Elite Concierge Update", {
+                                    body: "Architect Claire has approved your tailored walnut living room design suggestions.",
+                                    icon: "/assets/logo.png"
+                                  });
+                                } catch (e) {
+                                  navigator.serviceWorker.ready.then((reg) => {
+                                    reg.showNotification("🔔 Elite Concierge Update", {
+                                      body: "Architect Claire has approved your tailored walnut living room design suggestions."
+                                    });
+                                  });
+                                }
+                              }
+                            } else {
+                              setTelemetryLogs((prev) => [...prev, `[FCM Sim] Document visible. Fallback alert triggered (switch tabs next time).`]);
+                              addNotification("🔔 Elite Concierge Update", "Architect Claire has approved your tailored walnut living room design suggestions.", "system");
+                            }
+
+                            setNotificationLogs((prev) => [
+                              {
+                                id: Date.now().toString(),
+                                title: "🔔 Concierge Update (Background)",
+                                body: "Architect Claire has approved your tailored walnut living room design suggestions.",
+                                timestamp: new Date().toLocaleTimeString(),
+                                type: "background"
+                              },
+                              ...prev
+                            ]);
+                          }, 5000);
+                        }}
+                        className="w-full py-2 bg-black text-white hover:bg-neutral-800 font-bold uppercase text-[9px] tracking-wider rounded-lg transition"
+                      >
+                        Simulate Background Push
+                      </button>
+                    </div>
+
+                    {/* TERMINATED STATE SIMULATOR */}
+                    <div className="bg-[#F7F7F7] p-4 rounded-xl border flex flex-col justify-between gap-3 text-xs">
+                      <div>
+                        <span className="font-bold text-black block mb-1">Terminated (Cold Boot) state</span>
+                        <p className="text-[10px] text-slate-400 leading-relaxed">Simulates launching a completely closed/terminated app from clicking a system tray notification, routing the user instantly to their orders.</p>
+                      </div>
+                      <button
+                        id="btn-sim-terminated-push"
+                        onClick={() => {
+                          setTelemetryLogs((prev) => [...prev, `[Capacitor Native Sim] Cold boot initiated with notification payload`]);
+                          setTelemetryLogs((prev) => [...prev, `[Capacitor Native Sim] Routing user: /orders-history`]);
+                          
+                          // Trigger mock cold-boot navigation routing behavior
+                          setActiveProfileTab("orders");
+                          addNotification("🚀 Cold Boot Successful", "Simulated launching terminated app. User routed to orders history.", "system");
+                          
+                          setNotificationLogs((prev) => [
+                            {
+                              id: Date.now().toString(),
+                              title: "🚀 Cold Boot (Terminated App)",
+                              body: "User launched terminated app, routed to purchases.",
+                              timestamp: new Date().toLocaleTimeString(),
+                              type: "terminated"
+                            },
+                            ...prev
+                          ]);
+                        }}
+                        className="w-full py-2 bg-black text-white hover:bg-neutral-800 font-bold uppercase text-[9px] tracking-wider rounded-lg transition"
+                      >
+                        Simulate Terminated Boot
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4. Firebase Analytics & Crashlytics Integration Testing */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* CRASHLYTICS PANEL */}
+                  <div className="border border-slate-100 p-4 rounded-2xl space-y-3 text-xs">
+                    <span className="font-bold text-[10px] text-slate-400 uppercase tracking-wider block font-sans">Firebase Crashlytics Test Console (Task 6)</span>
+                    <div className="space-y-2">
+                      <button
+                        id="btn-test-fatal-crash"
+                        onClick={() => {
+                          const err = new Error("FATAL EXCEPTION: IndexOutOfBounds in native thread block com.nayelbasket.app");
+                          logCrashlyticsError(err, true);
+                          setTelemetryLogs((prev) => [...prev, `[Crashlytics] Logged fatal exception stack trace to server.`]);
+                          addNotification("🐞 Fatal Crash Logged", "Simulated Android Application fatal crash logged in Crashlytics.", "system");
+                        }}
+                        className="w-full py-2 bg-red-500 hover:bg-red-600 text-white font-bold uppercase text-[9px] tracking-wider rounded-lg transition"
+                      >
+                        Trigger Fatal Crash Log
+                      </button>
+
+                      <button
+                        id="btn-test-nonfatal-crash"
+                        onClick={() => {
+                          const err = new Error("NON-FATAL CAUGHT EXCEPTION: Supabase network timeout, using local SQLite cache");
+                          logCrashlyticsError(err, false);
+                          setTelemetryLogs((prev) => [...prev, `[Crashlytics] Logged caught exception log to console.`]);
+                          addNotification("🐞 Non-Fatal Logged", "Simulated caught exception logged to Crashlytics.", "system");
+                        }}
+                        className="w-full py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold uppercase text-[9px] tracking-wider rounded-lg transition"
+                      >
+                        Trigger Caught Exception Log
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* ANALYTICS PANEL */}
+                  <div className="border border-slate-100 p-4 rounded-2xl space-y-3 text-xs">
+                    <span className="font-bold text-[10px] text-slate-400 uppercase tracking-wider block font-sans">Firebase Analytics Dispatcher (Task 5)</span>
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          placeholder="Event: view_item"
+                          value={customEvent}
+                          onChange={(e) => setCustomEvent(e.target.value)}
+                          className="bg-[#F7F7F7] border border-slate-200 rounded-lg p-2 text-[10px] focus:outline-none"
+                        />
+                        <input
+                          placeholder="Params: category:Living"
+                          value={customEventParams}
+                          onChange={(e) => setCustomEventParams(e.target.value)}
+                          className="bg-[#F7F7F7] border border-slate-200 rounded-lg p-2 text-[10px] focus:outline-none"
+                        />
+                      </div>
+                      <button
+                        id="btn-dispatch-analytics"
+                        onClick={() => {
+                          const name = customEvent.trim() || "test_custom_event";
+                          let paramsObj = { simulated_user: "alex_rivera" };
+                          if (customEventParams) {
+                            try {
+                              const pair = customEventParams.split(":");
+                              if (pair.length === 2) {
+                                paramsObj[pair[0].trim()] = pair[1].trim();
+                              }
+                            } catch (e) {
+                              console.warn("Error parsing event parameters:", e);
+                            }
+                          }
+                          logAnalyticsEvent(name, paramsObj);
+                          setTelemetryLogs((prev) => [...prev, `[Analytics] Logged Event "${name}" with params: ${JSON.stringify(paramsObj)}`]);
+                          addNotification("📊 Event Dispatched", `Successfully tracked custom event: ${name}`, "system");
+                          setCustomEvent("");
+                          setCustomEventParams("");
+                        }}
+                        className="w-full py-2 bg-black text-white hover:bg-neutral-800 font-bold uppercase text-[9px] tracking-wider rounded-lg transition"
+                      >
+                        Dispatch Event
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 5. Live Logs & Telemetry Console */}
+                <div className="bg-neutral-900 rounded-2xl p-4 font-mono text-[9px] leading-relaxed text-[#34C759] space-y-2 border border-neutral-800">
+                  <div className="flex justify-between items-center text-[10px] font-bold border-b border-neutral-800 pb-2 text-white">
+                    <span>SYSTEM TELEMETRY TERMINAL LOG</span>
+                    <button
+                      id="btn-clear-telemetry"
+                      onClick={() => setTelemetryLogs(["[System] Telemetry cleared."])}
+                      className="text-neutral-400 hover:text-white uppercase tracking-wider text-[8px] cursor-pointer"
+                    >
+                      Clear Log
+                    </button>
+                  </div>
+                  <div className="max-h-36 overflow-y-auto space-y-1.5 scrollbar-thin">
+                    {telemetryLogs.map((log, index) => (
+                      <div key={index} className="flex gap-2">
+                        <span className="text-neutral-500 flex-shrink-0">[{new Date().toLocaleTimeString()}]</span>
+                        <span className="break-all">{log}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 6. Push Notification Receipts Ledger */}
+                <div className="bg-white border border-slate-100 rounded-2xl p-4 space-y-3">
+                  <span className="font-bold text-[10px] text-slate-400 uppercase tracking-wider block font-sans">Notification Recieved Ledger</span>
+                  <div className="divide-y divide-slate-100 max-h-40 overflow-y-auto pr-1">
+                    {notificationLogs.length === 0 ? (
+                      <div className="py-6 text-center text-slate-400 text-[10px] font-light">
+                        No push notifications captured in this session.
+                      </div>
+                    ) : (
+                      notificationLogs.map((log) => (
+                        <div key={log.id} className="py-2.5 flex justify-between items-start gap-3">
+                          <div className="min-w-0">
+                            <span className="font-bold text-black text-[11px] block">{log.title}</span>
+                            <span className="text-slate-500 text-[10px] block mt-0.5 leading-normal">{log.body}</span>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <span className="text-[8px] text-slate-400 font-mono block">{log.timestamp}</span>
+                            <span className={`inline-block text-[8px] font-black uppercase px-1 rounded mt-1 ${
+                              log.type === "foreground" ? "bg-blue-400/10 text-blue-500" : log.type === "background" ? "bg-amber-400/10 text-amber-500" : "bg-purple-400/10 text-purple-500"
+                            }`}>{log.type}</span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* SECURITY & DEVICE SESSION LEDGER */}
+            {activeProfileTab === "security" && (
+              <div className="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm space-y-6 animate-fade-in text-black">
+                <div className="border-b pb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <div>
+                    <h3 className="text-sm font-bold text-black uppercase tracking-wider font-mono">Secured Patron Credentials</h3>
+                    <p className="text-[11px] text-slate-400 mt-0.5">Manage biometric WebAuthn keys, active device sessions, and login histories.</p>
+                  </div>
+                  <span className="text-[10px] font-bold text-[#34C759] bg-[#34C759]/10 border border-[#34C759]/20 px-2.5 py-1 rounded-full uppercase font-mono">
+                    Device Node Secure
+                  </span>
+                </div>
+
+                {/* Biometrics Configuration Panel */}
+                <div className="bg-[#F7F7F7] p-5 rounded-2xl border border-slate-100 space-y-4 text-xs">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <span className="font-bold text-[11px] text-black uppercase tracking-wider block font-sans">Biometric Credentials (Face ID / Fingerprint)</span>
+                      <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">Secure your connoisseur profile with lightning fast biometrics built directly on secure enclave frameworks.</p>
+                    </div>
+                    <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${
+                      isBiometricRegistered ? "bg-[#34C759]/10 text-[#34C759]" : "bg-neutral-200 text-slate-500 font-medium"
+                    }`}>
+                      {isBiometricRegistered ? "REGISTERED" : "INACTIVE"}
+                    </span>
+                  </div>
+
+                  <button
+                    id="btn-toggle-biometrics-reg"
+                    onClick={() => {
+                      if (isBiometricRegistered) {
+                        setIsBiometricRegistered(false);
+                        localStorage.setItem("nb_biometric_registered", "false");
+                        addNotification("🛡️ Biometrics Removed", "WebAuthn biometric credentials successfully de-registered.", "system");
+                      } else {
+                        setBiometricPromptType("face");
+                        setShowBiometricPrompt(true);
+                        setTimeout(() => {
+                          setShowBiometricPrompt(false);
+                          setIsBiometricRegistered(true);
+                          localStorage.setItem("nb_biometric_registered", "true");
+                          addNotification("🛡️ Biometrics Registered", "Successfully registered WebAuthn biometric credentials inside local secure chip.", "system");
+                        }, 2200);
+                      }
+                    }}
+                    className={`w-full py-3 font-bold uppercase text-[10px] tracking-wider rounded-xl transition cursor-pointer ${
+                      isBiometricRegistered 
+                        ? "bg-red-500 hover:bg-red-600 text-white" 
+                        : "bg-black hover:bg-neutral-800 text-white"
+                    }`}
+                  >
+                    {isBiometricRegistered ? "DE-REGISTER BIOMETRICS" : "REGISTER DEVICE BIOMETRICS (WEBAUTHN)"}
+                  </button>
+                </div>
+
+                {/* Connected Devices Session Manager */}
+                <div className="space-y-3">
+                  <span className="font-bold text-[10px] text-slate-400 uppercase tracking-wider block font-sans">Connected Devices & Session Management</span>
+                  <div className="space-y-2">
+                    {sessionDevices.map((dev) => (
+                      <div key={dev.id} className="bg-[#F7F7F7] border border-slate-100 p-4 rounded-2xl flex justify-between items-center gap-4 text-xs">
+                        <div className="flex gap-3 items-center">
+                          <div className="p-2 bg-white rounded-xl border flex-shrink-0 text-slate-500">
+                            {dev.name.includes("iPhone") || dev.name.includes("iPad") ? "📱" : "💻"}
+                          </div>
+                          <div>
+                            <span className="font-bold text-black block flex items-center gap-2">
+                              {dev.name}
+                              {dev.current && (
+                                <span className="text-[8px] bg-[#34C759]/10 text-[#34C759] border border-[#34C759]/20 px-1.5 py-0.5 rounded uppercase font-mono">Current</span>
+                              )}
+                            </span>
+                            <span className="text-[10px] text-slate-400 block mt-0.5">{dev.location} • IP: {dev.ip}</span>
+                          </div>
+                        </div>
+
+                        {!dev.current && (
+                          <button
+                            id={`btn-revoke-session-${dev.id}`}
+                            onClick={() => {
+                              setSessionDevices((prev) => prev.filter((d) => d.id !== dev.id));
+                              addNotification("🛡️ Session Revoked", `The device session for ${dev.name} was successfully terminated.`, "system");
+                            }}
+                            className="px-2.5 py-1 bg-red-400/10 hover:bg-red-400/15 text-red-500 border border-red-400/20 rounded-lg text-[9px] font-bold uppercase cursor-pointer"
+                          >
+                            REVOKE
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Security Audit Ledger (Login History) */}
+                <div className="space-y-3">
+                  <span className="font-bold text-[10px] text-slate-400 uppercase tracking-wider block font-sans">Security Audit Log (Login History)</span>
+                  <div className="bg-[#F7F7F7] border border-slate-100 p-4 rounded-2xl max-h-48 overflow-y-auto divide-y divide-slate-200/50">
+                    {loginHistory.map((log, index) => (
+                      <div key={index} className="py-2.5 first:pt-0 last:pb-0 flex justify-between items-center text-xs">
+                        <div>
+                          <span className="font-bold text-black block">{log.device}</span>
+                          <span className="text-[10px] text-slate-400 block mt-0.5">{log.location} • Status: {log.status}</span>
+                        </div>
+                        <span className="font-mono text-[9px] text-slate-400">{log.date}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
             </div>
 
             {/* Right Side Column (Gateways & Settings) */}
@@ -1628,7 +2737,8 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                       id="btn-profile-logout"
                       onClick={() => {
                         addNotification("🚪 Graceful Logout", "You have gracefully logged out. All session tokens cleared.", "system");
-                        addWalletFunds(-walletBalance + 250); // reset balance safely
+                        setCustomerUser(null);
+                        localStorage.removeItem("nb_customer_user");
                         setActiveSection("home");
                       }}
                       className="text-xs font-bold text-red-500 hover:text-red-700 uppercase tracking-widest cursor-pointer"

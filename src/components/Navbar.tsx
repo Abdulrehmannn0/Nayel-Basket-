@@ -13,25 +13,35 @@ import {
   Search,
   Check, 
   AlertCircle,
-  Cpu
+  Cpu,
+  Heart,
+  User,
+  Home,
+  Layers
 } from "lucide-react";
 
 interface NavbarProps {
-  onBackToHome: () => void;
-  onSelectAi: () => void;
+  activeSection: "home" | "categories" | "wishlist" | "cart" | "profile" | "ai";
+  setActiveSection: (sec: "home" | "categories" | "wishlist" | "cart" | "profile" | "ai") => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ onBackToHome, onSelectAi }) => {
+export const Navbar: React.FC<NavbarProps> = ({ activeSection, setActiveSection }) => {
   const { 
     notifications, 
     markNotificationAsRead, 
     searchQuery, 
-    setSearchQuery 
+    setSearchQuery,
+    cart,
+    wishlist
   } = useApp();
   
   const [openNotifications, setOpenNotifications] = useState(false);
   const [greeting, setGreeting] = useState("Welcome");
   const [isOnline, setIsOnline] = useState<boolean>(typeof navigator !== "undefined" ? navigator.onLine : true);
+  const [customerUser, setCustomerUser] = useState<any>(() => {
+    const saved = localStorage.getItem("nb_customer_user");
+    return saved ? JSON.parse(saved) : null;
+  });
 
   useEffect(() => {
     const hours = new Date().getHours();
@@ -55,7 +65,24 @@ export const Navbar: React.FC<NavbarProps> = ({ onBackToHome, onSelectAi }) => {
     };
   }, []);
 
+  useEffect(() => {
+    const updateCustomerUser = () => {
+      const saved = localStorage.getItem("nb_customer_user");
+      setCustomerUser(saved ? JSON.parse(saved) : null);
+    };
+
+    window.addEventListener("customer-user-changed", updateCustomerUser);
+    window.addEventListener("storage", updateCustomerUser);
+
+    return () => {
+      window.removeEventListener("customer-user-changed", updateCustomerUser);
+      window.removeEventListener("storage", updateCustomerUser);
+    };
+  }, []);
+
   const unreadCount = notifications.filter((n) => !n.read).length;
+  const cartCount = cart.reduce((acc, item) => acc + item.quantity, 0);
+  const wishlistCount = wishlist.length;
 
   return (
     <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-100 text-black">
@@ -66,7 +93,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onBackToHome, onSelectAi }) => {
           <div 
             id="brand-logo-trigger"
             className="flex flex-col items-start cursor-pointer group" 
-            onClick={onBackToHome}
+            onClick={() => setActiveSection("home")}
           >
             <div className="flex items-center gap-2">
               <div className="bg-black p-1.5 rounded-lg transition-transform duration-300 group-hover:scale-105">
@@ -83,18 +110,69 @@ export const Navbar: React.FC<NavbarProps> = ({ onBackToHome, onSelectAi }) => {
             </span>
           </div>
 
+          {/* Desktop Central Navigation Links */}
+          <div className="hidden lg:flex items-center gap-8 text-[11px] font-bold uppercase tracking-[0.15em] font-sans">
+            <button
+              id="nav-link-home"
+              onClick={() => setActiveSection("home")}
+              className={`hover:text-black transition-colors duration-200 cursor-pointer ${activeSection === "home" ? "text-black border-b-2 border-black pb-1.5" : "text-slate-400"}`}
+            >
+              Home
+            </button>
+            <button
+              id="nav-link-categories"
+              onClick={() => setActiveSection("categories")}
+              className={`hover:text-black transition-colors duration-200 cursor-pointer ${activeSection === "categories" ? "text-black border-b-2 border-black pb-1.5" : "text-slate-400"}`}
+            >
+              Catalog
+            </button>
+            <button
+              id="nav-link-wishlist"
+              onClick={() => setActiveSection("wishlist")}
+              className={`hover:text-black transition-colors duration-200 cursor-pointer flex items-center gap-1 ${activeSection === "wishlist" ? "text-black border-b-2 border-black pb-1.5" : "text-slate-400"}`}
+            >
+              <span>Curations</span>
+              {wishlistCount > 0 && (
+                <span className="bg-neutral-200 text-neutral-800 text-[9px] font-black px-1.5 py-0.5 rounded-full">
+                  {wishlistCount}
+                </span>
+              )}
+            </button>
+            <button
+              id="nav-link-cart"
+              onClick={() => setActiveSection("cart")}
+              className={`hover:text-black transition-colors duration-200 cursor-pointer flex items-center gap-1.5 ${activeSection === "cart" ? "text-black border-b-2 border-black pb-1.5" : "text-slate-400"}`}
+            >
+              <span>Bag</span>
+              {cartCount > 0 ? (
+                <span className="bg-[#34C759] text-white text-[9px] font-black px-1.5 py-0.5 rounded-full animate-pulse">
+                  {cartCount}
+                </span>
+              ) : (
+                <span className="text-slate-300 font-light">0</span>
+              )}
+            </button>
+            <button
+              id="nav-link-profile"
+              onClick={() => setActiveSection("profile")}
+              className={`hover:text-black transition-colors duration-200 cursor-pointer ${activeSection === "profile" ? "text-black border-b-2 border-black pb-1.5" : "text-slate-400"}`}
+            >
+              Profile
+            </button>
+          </div>
+
           {/* Search bar centered with rounded premium design */}
-          <div className="hidden md:flex flex-1 max-w-md mx-8 relative">
+          <div className="hidden md:flex flex-1 max-w-xs mx-4 relative">
             <div className="relative w-full">
               <input
                 id="header-search-input"
                 type="text"
-                placeholder="Search bespoke furniture, lighting, wall decor..."
+                placeholder="Search catalog..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-100 hover:border-slate-200 focus:border-black/50 focus:bg-white text-xs px-4 py-2.5 pl-10 rounded-full transition-all duration-300 outline-none text-black placeholder-slate-400"
+                className="w-full bg-slate-50 border border-slate-100 hover:border-slate-200 focus:border-black/50 focus:bg-white text-xs px-4 py-2 pl-9 rounded-full transition-all duration-300 outline-none text-black placeholder-slate-400"
               />
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 stroke-[2]" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 stroke-[2]" />
               {searchQuery && (
                 <button
                   id="btn-clear-search"
@@ -109,23 +187,70 @@ export const Navbar: React.FC<NavbarProps> = ({ onBackToHome, onSelectAi }) => {
 
           {/* User Metrics & QuickActions (Top Right) */}
           <div className="flex items-center gap-4">
+
+            {/* Guest / Profile Status Badge */}
+            <button
+              id="btn-navbar-profile-badge"
+              onClick={() => setActiveSection("profile")}
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full border transition duration-300 cursor-pointer ${
+                customerUser 
+                  ? "bg-slate-50 hover:bg-slate-100 border-slate-200/80" 
+                  : "bg-amber-500/5 hover:bg-amber-500/10 border-amber-500/20 text-amber-600"
+              }`}
+            >
+              <div className="relative flex items-center justify-center">
+                {customerUser ? (
+                  <div className="w-5.5 h-5.5 bg-neutral-900 text-white rounded-full flex items-center justify-center text-[9px] font-black uppercase font-mono">
+                    {customerUser.name.split(" ").map((n: any) => n[0]).join("").substring(0, 2)}
+                  </div>
+                ) : (
+                  <div className="w-5.5 h-5.5 bg-amber-500/10 text-amber-600 rounded-full flex items-center justify-center text-[10px] font-bold">
+                    👤
+                  </div>
+                )}
+                {isOnline && (
+                  <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-[#34C759] border-2 border-white rounded-full"></span>
+                )}
+              </div>
+              <div className="text-left hidden sm:block">
+                {customerUser ? (
+                  <div>
+                    <span className="text-[10px] font-black text-black font-sans leading-tight block">
+                      {customerUser.name.split(" ")[0]}
+                    </span>
+                    <span className="text-[8px] font-bold text-[#34C759] uppercase tracking-wider font-mono block leading-none mt-0.5">
+                      {customerUser.tier.replace(" tier", "")}
+                    </span>
+                  </div>
+                ) : (
+                  <div>
+                    <span className="text-[10px] font-black text-amber-800 leading-tight block">
+                      GUEST PATRON
+                    </span>
+                    <span className="text-[8px] font-bold text-amber-500/80 uppercase tracking-widest font-sans block leading-none mt-0.5">
+                      TAP TO AUTH
+                    </span>
+                  </div>
+                )}
+              </div>
+            </button>
             
             {/* AI Assistant Button (Display "Coming Soon" elegantly next to or inside) */}
             <div className="relative group">
               <button
                 id="btn-ai-assistant-header"
-                onClick={onSelectAi}
-                className="p-2.5 text-slate-600 hover:text-black bg-slate-50 hover:bg-slate-100 rounded-full border border-slate-100 transition duration-300 relative cursor-pointer flex items-center gap-2"
+                onClick={() => setActiveSection("ai")}
+                className={`p-2 sm:p-2.5 rounded-full border transition duration-300 relative cursor-pointer flex items-center gap-1.5 ${activeSection === "ai" ? "bg-[#34C759]/10 border-[#34C759]/30 text-black" : "text-slate-600 hover:text-black bg-slate-50 hover:bg-slate-100 border-slate-100"}`}
               >
                 <Sparkles className="h-4 w-4 text-[#34C759] animate-pulse" />
-                <span className="text-[9px] uppercase font-bold tracking-widest text-[#34C759] bg-[#34C759]/10 px-2 py-0.5 rounded-full border border-[#34C759]/20">
-                  Coming Soon
+                <span className="hidden sm:inline text-[9px] uppercase font-bold tracking-widest text-[#34C759] bg-[#34C759]/10 px-2 py-0.5 rounded-full border border-[#34C759]/20">
+                  AI Stylist
                 </span>
               </button>
               
               {/* Tooltip on hover */}
               <div className="absolute right-0 top-full mt-2 w-52 bg-black text-white text-[10px] p-2.5 rounded-xl shadow-xl pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-50 leading-relaxed font-sans">
-                Our bespoke <strong className="text-[#34C759]">AI Stylist</strong> will calibrate placement using real-time camera logic. Click to preview.
+                Our bespoke <strong className="text-[#34C759]">AI Stylist</strong> will calibrate spacing and suggest pairing. Click to chat!
               </div>
             </div>
 

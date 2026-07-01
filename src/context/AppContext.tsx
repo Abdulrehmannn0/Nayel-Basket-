@@ -6,6 +6,24 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { Product, CartItem, Address, Order, Coupon, AppNotification, SellerDashboardStats, WalletTransaction } from "../types";
 import { SEED_PRODUCTS, SEED_ADDRESSES, SEED_NOTIFICATIONS, SEED_COUPONS } from "../data";
+import { 
+  isSupabaseConnected, 
+  dbGetProducts, 
+  dbGetOrders, 
+  dbAddOrder, 
+  dbUpdateOrderStatus,
+  dbGetCart,
+  dbAddToCart,
+  dbRemoveFromCart,
+  dbClearCart,
+  dbGetWishlist,
+  dbToggleWishlist,
+  dbGetAddresses,
+  dbAddAddress,
+  dbRemoveAddress,
+  subscribeToRealtimeOrders,
+  subscribeToRealtimeInventory
+} from "../lib/supabase";
 
 interface AppContextType {
   products: Product[];
@@ -128,6 +146,81 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [searchQuery, setSearchQuery] = useState("");
 
+  // Sync products and orders on mount if Supabase is connected
+  useEffect(() => {
+    async function initDbSync() {
+      if (isSupabaseConnected()) {
+        try {
+          const dbProds = await dbGetProducts(SEED_PRODUCTS);
+          setProducts(dbProds);
+          const dbOrds = await dbGetOrders([]);
+          if (dbOrds && dbOrds.length > 0) {
+            setOrders(dbOrds);
+          }
+          const dbCartItems = await dbGetCart();
+          if (dbCartItems && dbCartItems.length > 0) {
+            setCart(dbCartItems);
+          }
+          const dbWish = await dbGetWishlist();
+          if (dbWish && dbWish.length > 0) {
+            setWishlist(dbWish);
+          }
+          const dbAddrs = await dbGetAddresses(SEED_ADDRESSES);
+          if (dbAddrs && dbAddrs.length > 0) {
+            setAddresses(dbAddrs);
+          }
+        } catch (err) {
+          console.warn("Initial Supabase load failed, using local storage cache:", err);
+        }
+      }
+    }
+    initDbSync();
+  }, []);
+
+  // Realtime subscriptions for orders and inventory levels
+  useEffect(() => {
+    if (!isSupabaseConnected()) return;
+
+    const ordersSub = subscribeToRealtimeOrders((payload) => {
+      console.log("Realtime order status change:", payload);
+      const updatedOrder = payload.new;
+      if (updatedOrder) {
+        setOrders((prev) => prev.map((ord) => {
+          if (ord.id === updatedOrder.id) {
+            return {
+              ...ord,
+              status: updatedOrder.status,
+              tracking: updatedOrder.tracking || ord.tracking
+            };
+          }
+          return ord;
+        }));
+      }
+    });
+
+    const inventorySub = subscribeToRealtimeInventory((payload) => {
+      console.log("Realtime inventory update:", payload);
+      const updatedPrd = payload.new;
+      if (updatedPrd) {
+        setProducts((prev) => prev.map((p) => {
+          if (p.id === updatedPrd.id) {
+            return {
+              ...p,
+              stock: updatedPrd.stock_count,
+              price: Number(updatedPrd.price)
+            };
+          }
+          return p;
+        }));
+      }
+    });
+
+    return () => {
+      if (ordersSub) ordersSub.unsubscribe();
+      if (inventorySub) inventorySub.unsubscribe();
+    };
+  }, []);
+
   // Apply theme to document element
   useEffect(() => {
     const root = window.document.documentElement;
@@ -192,6 +285,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       return [...prev, { id: cartItemId, product, quantity, selectedSize: size, selectedColor: color }];
     });
+
+    if (isSupabaseConnected()) {
+      dbAddToCart(product.id, quantity, size, color).catch((err) => {
+        console.warn("Failed to sync cart item addition with Supabase:", err);
+      });
+    }
+
     addNotification(
       "🛒 Added to Cart",
       `Successfully added ${quantity}x ${product.name} to your cart.`,
@@ -201,6 +301,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const removeFromCart = (cartItemId: string) => {
     setCart((prev) => prev.filter((item) => item.id !== cartItemId));
+    if (isSupabaseConnected()) {
+      dbRemoveFromCart(cartItemId).catch((err) => {
+        console.warn("Failed to remove cart item from Supabase:", err);
+      });
+    }
   };
 
   const updateCartQuantity = (cartItemId: string, qty: number) => {
@@ -209,9 +314,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return;
     }
     setCart((prev) => prev.map((item) => (item.id === cartItemId ? { ...item, quantity: qty } : item)));
+    
+    // Sync to Supabase if connected
+    if (isSupabaseConnected()) {
+      const matched = cart.find(item => item.id === cartItemId);
+      if (matched) {
+        dbAddToCart(matched.product.id, qty, matched.selectedSize, matched.selectedColor).catch((err) => {
+          console.warn("Failed to update cart quantity on Supabase:", err);
+        });
+      }
+    }
   };
 
-  const clearCart = () => setCart([]);
+  const clearCart = () => {
+    setCart([]);
+    if (isSupabaseConnected()) {
+      dbClearCart().catch((err) => {
+        console.warn("Failed to clear cart on Supabase:", err);
+      });
+    }
+  };
 
   const toggleWishlist = (product: Product) => {
     setWishlist((prev) => {
@@ -223,17 +345,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       addNotification("💜 Added to Wishlist", `Curated ${product.name} has been saved to your favorites wishlist.`, "promo");
       return [...prev, product];
     });
+
+    if (isSupabaseConnected()) {
+      dbToggleWishlist(product.id).catch((err) => {
+        console.warn("Failed to toggle wishlist on Supabase:", err);
+      });
+    }
   };
 
   const addAddress = (addr: Address) => {
+    const freshId = `addr_${Date.now()}`;
+    const newAddr = { ...addr, id: freshId };
     setAddresses((prev) => {
       const updated = addr.isDefault ? prev.map((a) => ({ ...a, isDefault: false })) : prev;
-      return [...updated, { ...addr, id: `addr_${Date.now()}` }];
+      return [...updated, newAddr];
     });
+
+    if (isSupabaseConnected()) {
+      dbAddAddress(newAddr).catch((err) => {
+        console.warn("Failed to add address to Supabase:", err);
+      });
+    }
   };
 
   const removeAddress = (id: string) => {
     setAddresses((prev) => prev.filter((a) => a.id !== id));
+    if (isSupabaseConnected()) {
+      dbRemoveAddress(id).catch((err) => {
+        console.warn("Failed to remove address from Supabase:", err);
+      });
+    }
   };
 
   const addNotification = (title: string, desc: string, type: AppNotification["type"]) => {
@@ -337,9 +478,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addRewardPoints(pointsEarned);
     updateSellerStats(total);
 
+    // Save order directly to Supabase if connected
+    if (isSupabaseConnected()) {
+      dbAddOrder(newOrder).catch((err) => {
+        console.warn("Failed to sync new order with Supabase:", err);
+      });
+    }
+
     // Deduct stock levels safely
     cart.forEach((item) => {
-      updateProductStock(item.product.id, Math.max(0, item.product.stock - item.quantity));
+      const newStock = Math.max(0, item.product.stock - item.quantity);
+      updateProductStock(item.product.id, newStock);
+      // Update stock level inside Supabase too
+      if (isSupabaseConnected()) {
+        import("../lib/supabase").then(({ dbUpdateProduct }) => {
+          dbUpdateProduct({ ...item.product, stock: newStock });
+        });
+      }
     });
 
     // Reset cart and active coupons
@@ -358,10 +513,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const cancelOrder = (orderId: string) => {
     setOrders((prev) => prev.map((ord) => {
       if (ord.id === orderId) {
+        const updatedTracking = ord.tracking.map((t, idx) => idx === 0 ? { ...t, status: "completed" as const } : { ...t, title: "Order Cancelled", status: "completed" as const });
+        
+        // Sync cancellation with Supabase if connected
+        if (isSupabaseConnected()) {
+          dbUpdateOrderStatus(orderId, "Cancelled", updatedTracking).catch((err) => {
+            console.warn("Failed to sync order cancellation with Supabase:", err);
+          });
+        }
+        
         return {
           ...ord,
           status: "Cancelled",
-          tracking: ord.tracking.map((t, idx) => idx === 0 ? { ...t, status: "completed" as const } : { ...t, title: "Order Cancelled", status: "completed" as const })
+          tracking: updatedTracking
         };
       }
       return ord;
@@ -406,6 +570,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           updatedTracking[2] = { ...updatedTracking[2], status: "completed", timestamp: new Date().toISOString() };
           updatedTracking[3] = { ...updatedTracking[3], status: "completed", timestamp: new Date().toISOString() };
         }
+        
+        // Sync with Supabase asynchronously
+        if (isSupabaseConnected()) {
+          dbUpdateOrderStatus(orderId, status, updatedTracking).catch((err) => {
+            console.warn("Failed to sync status update with Supabase:", err);
+          });
+        }
+        
         return { ...ord, status, tracking: updatedTracking };
       }
       return ord;

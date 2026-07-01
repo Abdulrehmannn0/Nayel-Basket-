@@ -114,6 +114,7 @@ export interface Coupon {
   minSpend: number;
   description: string;
   expiry: string;
+  isActive?: boolean;
 }
 
 export interface AppNotification {

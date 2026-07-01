@@ -15,6 +15,19 @@ import { AdminProductManager } from "./AdminProductManager";
 import { AdminOrderManager } from "./AdminOrderManager";
 import { AdminCustomerManager } from "./AdminCustomerManager";
 import { AdminSettings } from "./AdminSettings";
+import { AdminCategoryManager } from "./AdminCategoryManager";
+import { AdminInventoryManager } from "./AdminInventoryManager";
+import { AdminCouponManager } from "./AdminCouponManager";
+import { AdminFlashSaleManager } from "./AdminFlashSaleManager";
+import { AdminBannerManager } from "./AdminBannerManager";
+import { AdminHomepageSectionManager } from "./AdminHomepageSectionManager";
+import { AdminVideoManager } from "./AdminVideoManager";
+import { AdminTestimonialManager } from "./AdminTestimonialManager";
+import { AdminBlogManager } from "./AdminBlogManager";
+import { AdminReviewManager } from "./AdminReviewManager";
+import { AdminAnalyticsManager } from "./AdminAnalyticsManager";
+import { AdminReportManager } from "./AdminReportManager";
+import { AdminRolesAndSecurityManager } from "./AdminRolesAndSecurityManager";
 import { 
   Menu, 
   Bell, 
@@ -37,7 +50,7 @@ import {
 import { Product, Order, Coupon, AppNotification } from "../types";
 
 interface AdminDashboardProps {
-  adminUser: { email: string; role: "admin" | "manager" | "staff" };
+  adminUser: { email: string; role: "super_admin" | "admin" | "manager" | "staff" | "customer" };
   onLogout: () => void;
 }
 
@@ -175,12 +188,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
 
   // 5. Admins & Roles Manager
   const [admins, setAdmins] = useState([
-    { email: "admin@nayelbasket.com", role: "admin", department: "Executive Logistics", created: "2026-01-10" },
+    { email: "super_admin@nayelbasket.com", role: "super_admin", department: "Executive Logistics", created: "2026-01-02" },
+    { email: "admin@nayelbasket.com", role: "admin", department: "Operations Control", created: "2026-01-10" },
     { email: "manager@nayelbasket.com", role: "manager", department: "Atelier Curations", created: "2026-03-12" },
-    { email: "staff@nayelbasket.com", role: "staff", department: "Customer Concierge", created: "2026-05-18" }
+    { email: "staff@nayelbasket.com", role: "staff", department: "Customer Concierge", created: "2026-05-18" },
+    { email: "customer@nayelbasket.com", role: "customer", department: "External VIP Patron", created: "2026-06-01" }
   ]);
   const [newAdminEmail, setNewAdminEmail] = useState("");
-  const [newAdminRole, setNewAdminRole] = useState<"admin" | "manager" | "staff">("staff");
+  const [newAdminRole, setNewAdminRole] = useState<"super_admin" | "admin" | "manager" | "staff" | "customer">("staff");
   const [newAdminDept, setNewAdminDept] = useState("");
 
   const handleAddAdmin = (e: React.FormEvent) => {
@@ -302,134 +317,32 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
 
           {activeTab === "settings" && <AdminSettings />}
 
-          {/* INLINE MODULE: Categories Tab */}
-          {activeTab === "categories" && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in text-xs">
-              <div className="lg:col-span-2 bg-white p-6 border rounded-[2.5rem] shadow-sm space-y-4">
-                <div className="border-b pb-4">
-                  <h3 className="text-sm font-black text-black uppercase tracking-tight">Unlimited Categories Directory</h3>
-                  <p className="text-[10px] text-slate-400 mt-0.5">Control hierarchical catalog segments, visibility ranks, and item priority metrics.</p>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead>
-                      <tr className="border-b text-slate-400 font-extrabold text-[9px] uppercase tracking-wider">
-                        <th className="py-2">Category Segment</th>
-                        <th className="py-2">Sub-segments</th>
-                        <th className="py-2 text-center">Priority</th>
-                        <th className="py-2 text-center">Visibility</th>
-                        <th className="py-2 text-right">Delete</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y text-slate-600">
-                      {categories.map((c, idx) => (
-                        <tr key={idx} className="hover:bg-slate-50">
-                          <td className="py-3 font-bold text-black">{c.name}</td>
-                          <td className="py-3 text-slate-400 font-medium truncate max-w-xs">{c.sub}</td>
-                          <td className="py-3 text-center font-mono font-extrabold text-[#34C759]">Rank {c.priority}</td>
-                          <td className="py-3 text-center">
-                            <span className="inline-block text-[8px] bg-[#34C759]/10 text-[#34C759] font-black px-2 py-0.5 rounded uppercase font-mono">VISIBLE</span>
-                          </td>
-                          <td className="py-3 text-right">
-                            <button onClick={() => setCategories(prev => prev.filter((_, i) => i !== idx))} className="p-1 text-slate-400 hover:text-rose-600 border rounded cursor-pointer">
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+           {/* INTEGRATED CUSTOM MODULES */}
+          {activeTab === "categories" && <AdminCategoryManager />}
 
-              {/* Add category block */}
-              <div className="bg-white p-6 border rounded-[2.5rem] shadow-sm">
-                <form onSubmit={handleAddCategory} className="space-y-4">
-                  <h3 className="text-sm font-black text-black uppercase border-b pb-4">Create New Category</h3>
-                  <div>
-                    <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Category Title</label>
-                    <input required value={newCatName} onChange={e => setNewCatName(e.target.value)} className="w-full bg-[#F7F7F7] border p-2.5 rounded-xl focus:outline-none focus:bg-white text-black font-semibold" />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Sub-Categories description</label>
-                    <input value={newCatSub} onChange={e => setNewCatSub(e.target.value)} className="w-full bg-[#F7F7F7] border p-2.5 rounded-xl focus:outline-none" />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Display Priority Weight</label>
-                    <input type="number" value={newCatPriority} onChange={e => setNewCatPriority(e.target.value)} className="w-full bg-[#F7F7F7] border p-2.5 rounded-xl focus:outline-none text-black font-mono font-extrabold" />
-                  </div>
-                  <button type="submit" className="w-full py-3 bg-black hover:bg-[#34C759] text-white font-bold uppercase rounded-xl tracking-wider shadow-lg transition-all cursor-pointer text-[10px]">
-                    Create Category
-                  </button>
-                </form>
-              </div>
-            </div>
-          )}
+          {activeTab === "coupons" && <AdminCouponManager />}
 
-          {/* INLINE MODULE: Coupons Tab */}
-          {activeTab === "coupons" && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in text-xs">
-              <div className="lg:col-span-2 bg-white p-6 border rounded-[2.5rem] shadow-sm space-y-4">
-                <div className="border-b pb-4">
-                  <h3 className="text-sm font-black text-black uppercase tracking-tight">Active Promotions & Coupons</h3>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead>
-                      <tr className="border-b text-slate-400 font-extrabold text-[9px] uppercase tracking-wider">
-                        <th className="py-2">Promo Code</th>
-                        <th className="py-2">Rebate Value</th>
-                        <th className="py-2">Minimum spend</th>
-                        <th className="py-2">Narrative</th>
-                        <th className="py-2 text-right">Delete</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y text-slate-600 font-mono text-[11px]">
-                      {coupons.map((c, idx) => (
-                        <tr key={idx} className="hover:bg-slate-50">
-                          <td className="py-3 font-bold text-black text-xs uppercase font-mono">#{c.code}</td>
-                          <td className="py-3 text-[#34C759] font-black">{c.value}% OFF</td>
-                          <td className="py-3 font-bold">${c.minSpend}.00</td>
-                          <td className="py-3 text-slate-400 font-sans">{c.description}</td>
-                          <td className="py-3 text-right">
-                            <button onClick={() => setCoupons(prev => prev.filter((_, i) => i !== idx))} className="p-1 text-slate-400 hover:text-rose-600 border rounded cursor-pointer">
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+          {activeTab === "inventory" && <AdminInventoryManager />}
 
-              {/* Add coupon block */}
-              <div className="bg-white p-6 border rounded-[2.5rem] shadow-sm">
-                <form onSubmit={handleAddCoupon} className="space-y-4">
-                  <h3 className="text-sm font-black text-black uppercase border-b pb-4">Inject Voucher Coupon</h3>
-                  <div>
-                    <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Coupon Promo Code</label>
-                    <input required value={newCoupCode} onChange={e => setNewCoupCode(e.target.value)} className="w-full bg-[#F7F7F7] border p-2.5 rounded-xl uppercase font-mono font-extrabold text-black text-center text-sm" />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Percentage Rebate (%)</label>
-                    <input type="number" value={newCoupVal} onChange={e => setNewCoupVal(e.target.value)} className="w-full bg-[#F7F7F7] border p-2.5 rounded-xl font-mono text-black" />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Minimum Cart Spend ($)</label>
-                    <input type="number" value={newCoupMin} onChange={e => setNewCoupMin(e.target.value)} className="w-full bg-[#F7F7F7] border p-2.5 rounded-xl font-mono text-black" />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Marketing Description</label>
-                    <input value={newCoupDesc} onChange={e => setNewCoupDesc(e.target.value)} className="w-full bg-[#F7F7F7] border p-2.5 rounded-xl" />
-                  </div>
-                  <button type="submit" className="w-full py-3 bg-black hover:bg-[#34C759] text-white font-bold uppercase rounded-xl tracking-wider text-[10px]">
-                    Deploy Coupon Code
-                  </button>
-                </form>
-              </div>
-            </div>
-          )}
+          {activeTab === "flash_sale" && <AdminFlashSaleManager />}
+
+          {activeTab === "banners" && <AdminBannerManager />}
+
+          {activeTab === "homepage" && <AdminHomepageSectionManager />}
+
+          {activeTab === "videos" && <AdminVideoManager />}
+
+          {activeTab === "testimonials" && <AdminTestimonialManager />}
+
+          {activeTab === "blogs" && <AdminBlogManager />}
+
+          {activeTab === "reviews" && <AdminReviewManager />}
+
+          {activeTab === "analytics" && <AdminAnalyticsManager />}
+
+          {activeTab === "reports" && <AdminReportManager />}
+
+          {activeTab === "roles" && <AdminRolesAndSecurityManager />}
 
           {/* INLINE MODULE: Notifications/Firebase Center */}
           {activeTab === "notifications" && (
@@ -553,6 +466,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
                           <td className="py-3 font-bold text-black font-sans text-xs">{a.email}</td>
                           <td className="py-3">
                             <span className={`inline-block text-[8px] font-black uppercase px-2.5 py-0.5 rounded-full ${
+                              a.role === "super_admin" ? "bg-red-600 text-white" :
                               a.role === "admin" ? "bg-black text-white" :
                               a.role === "manager" ? "bg-[#34C759]/10 text-[#34C759]" :
                               "bg-slate-200 text-slate-600"
@@ -585,9 +499,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
                   <div>
                     <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Corporate System Role</label>
                     <select value={newAdminRole} onChange={e => setNewAdminRole(e.target.value as any)} className="w-full bg-[#F7F7F7] border p-2.5 rounded-xl font-bold">
+                      <option value="super_admin">Super Admin</option>
                       <option value="admin">Executive Master Admin</option>
                       <option value="manager">Atelier Manager</option>
                       <option value="staff">Customer Concierge Staff</option>
+                      <option value="customer">VIP Customer</option>
                     </select>
                   </div>
                   <div>
@@ -604,7 +520,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
           )}
 
           {/* Fallback for un-implemented sub-tabs (Banners, Testimonials, Blogs, SEO, etc.) */}
-          {["collections", "inventory", "reviews", "offers", "flash_sale", "banners", "homepage", "videos", "testimonials", "blogs", "wallet", "referral", "analytics", "reports", "seo", "shipping", "returns", "refunds", "roles"].includes(activeTab) && (
+          {["collections", "offers", "wallet", "referral", "seo", "shipping", "returns", "refunds"].includes(activeTab) && (
             <div className="bg-white p-8 border rounded-[2.5rem] shadow-sm text-center py-20 text-slate-500 space-y-4 max-w-lg mx-auto">
               <div className="h-12 w-12 bg-[#34C759]/10 rounded-2xl flex items-center justify-center text-[#34C759] mx-auto">
                 <Sparkles className="h-6 w-6 stroke-[2]" />
