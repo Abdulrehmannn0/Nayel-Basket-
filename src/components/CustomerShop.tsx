@@ -674,6 +674,7 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                     muted={isVideoMuted}
                     loop
                     playsInline
+                    style={{ height: "225px" }}
                     className="w-full h-full object-cover filter brightness-[0.7]"
                   />
                   
