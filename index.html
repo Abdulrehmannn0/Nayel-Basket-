@@ -20,9 +20,17 @@
     
     <title>Nayel Basket - Premium Home Decor Shopping Experience</title>
 
-    <!-- PWA Web App Manifest -->
+    <!-- PWA Web App Manifest & Caching Meta Tags -->
     <link rel="manifest" href="/manifest.json" />
-    <meta name="theme-color" content="#10b981" />
+    <meta name="theme-color" content="#D4AF37" />
+    
+    <!-- Apple iOS Safari Specific Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Nayel Basket" />
+    <link rel="apple-touch-icon" href="/icon-512.jpg" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icon-512.jpg" />
+    <meta name="mobile-web-app-capable" content="yes" />
 
     <!-- Preconnect Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -46,9 +54,9 @@
       .loader-spinner {
         width: 60px;
         height: 60px;
-        border: 3px solid rgba(16, 185, 129, 0.1); /* emerald-500 opacity 0.1 */
+        border: 3px solid rgba(212, 175, 55, 0.1); /* gold-D4AF37 opacity 0.1 */
         border-radius: 50%;
-        border-top-color: #10b981; /* emerald-500 */
+        border-top-color: #D4AF37; /* gold-D4AF37 */
         animation: spin 1s cubic-bezier(0.55, 0.055, 0.675, 0.19) infinite;
       }
       .loader-logo {
@@ -81,12 +89,12 @@
       }
     </style>
   </head>
-  <body class="bg-slate-950 text-slate-100 antialiased selection:bg-emerald-500/20 selection:text-emerald-300">
+  <body class="bg-slate-950 text-slate-100 antialiased selection:bg-[#D4AF37]/20 selection:text-[#D4AF37]">
     <!-- Premium Preloader HTML -->
     <div id="app-preloader">
       <div class="loader-spinner"></div>
       <div class="loader-logo">
-        <span style="color: #10b981;">◆</span> NAYEL BASKET
+        <span style="color: #D4AF37;">◆</span> NAYEL BASKET
       </div>
       <div class="loader-pulse">Calibrating Space Configurations...</div>
     </div>

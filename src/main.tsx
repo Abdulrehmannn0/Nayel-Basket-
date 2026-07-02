@@ -10,7 +10,7 @@ initializeFirebase();
 // Register the PWA service worker for native offline capabilities
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js")
+    navigator.serviceWorker.register("/service-worker.js")
       .then((reg) => console.log("PWA Service Worker registered successfully:", reg.scope))
       .catch((err) => console.error("PWA Service Worker registration failed:", err));
   });

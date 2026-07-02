@@ -209,7 +209,7 @@ function MainAppOrchestration() {
                 setActiveSection("home");
                 if (navigator.vibrate) navigator.vibrate(10);
               }}
-              className={`flex flex-col items-center gap-1 cursor-pointer transition-all ${activeSection === "home" ? "text-emerald-500 scale-105" : "text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"}`}
+              className={`flex flex-col items-center gap-1 cursor-pointer transition-all ${activeSection === "home" ? "text-[#D4AF37] scale-105" : "text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"}`}
             >
               <HomeIcon className="h-5 w-5 stroke-[2]" />
               <span className="text-[8px] font-bold uppercase tracking-wider font-sans">Home</span>
@@ -221,7 +221,7 @@ function MainAppOrchestration() {
                 setActiveSection("categories");
                 if (navigator.vibrate) navigator.vibrate(10);
               }}
-              className={`flex flex-col items-center gap-1 cursor-pointer transition-all ${activeSection === "categories" ? "text-emerald-500 scale-105" : "text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"}`}
+              className={`flex flex-col items-center gap-1 cursor-pointer transition-all ${activeSection === "categories" ? "text-[#D4AF37] scale-105" : "text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"}`}
             >
               <Layers className="h-5 w-5 stroke-[2]" />
               <span className="text-[8px] font-bold uppercase tracking-wider font-sans">Catalog</span>
@@ -233,13 +233,13 @@ function MainAppOrchestration() {
                 setActiveSection("ai");
                 if (navigator.vibrate) navigator.vibrate(10);
               }}
-              className={`flex flex-col items-center gap-1 cursor-pointer transition-all relative ${activeSection === "ai" ? "text-emerald-500 scale-105" : "text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"}`}
+              className={`flex flex-col items-center gap-1 cursor-pointer transition-all relative ${activeSection === "ai" ? "text-[#D4AF37] scale-105" : "text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"}`}
             >
               <div className="relative">
-                <Sparkles className="h-5 w-5 stroke-[2] animate-pulse text-emerald-500 dark:text-emerald-400" />
+                <Sparkles className="h-5 w-5 stroke-[2] animate-pulse text-[#D4AF37] dark:text-[#D4AF37]" />
                 <span className="absolute -top-1 -right-1 flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#D4AF37] opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-[#D4AF37]"></span>
                 </span>
               </div>
               <span className="text-[8px] font-bold uppercase tracking-wider font-sans">AI Styling</span>
@@ -251,7 +251,7 @@ function MainAppOrchestration() {
                 setActiveSection("wishlist");
                 if (navigator.vibrate) navigator.vibrate(10);
               }}
-              className={`flex flex-col items-center gap-1 cursor-pointer transition-all relative ${activeSection === "wishlist" ? "text-emerald-500 scale-105" : "text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"}`}
+              className={`flex flex-col items-center gap-1 cursor-pointer transition-all relative ${activeSection === "wishlist" ? "text-[#D4AF37] scale-105" : "text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"}`}
             >
               <Heart className="h-5 w-5 stroke-[2]" />
               {wishlistCount > 0 && (
@@ -268,11 +268,11 @@ function MainAppOrchestration() {
                 setActiveSection("cart");
                 if (navigator.vibrate) navigator.vibrate(10);
               }}
-              className={`flex flex-col items-center gap-1 cursor-pointer transition-all relative ${activeSection === "cart" ? "text-emerald-500 scale-105" : "text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"}`}
+              className={`flex flex-col items-center gap-1 cursor-pointer transition-all relative ${activeSection === "cart" ? "text-[#D4AF37] scale-105" : "text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"}`}
             >
               <ShoppingBag className="h-5 w-5 stroke-[2]" />
               {cartCount > 0 && (
-                <span className="absolute -top-1 -right-2 bg-emerald-500 text-white text-[8px] font-black px-1.5 py-0.2 rounded-full scale-90 animate-bounce">
+                <span className="absolute -top-1 -right-2 bg-[#D4AF37] text-neutral-950 text-[8px] font-black px-1.5 py-0.2 rounded-full scale-90 animate-bounce">
                   {cartCount}
                 </span>
               )}
@@ -285,7 +285,7 @@ function MainAppOrchestration() {
                 setActiveSection("profile");
                 if (navigator.vibrate) navigator.vibrate(10);
               }}
-              className={`flex flex-col items-center gap-1 cursor-pointer transition-all ${activeSection === "profile" ? "text-emerald-500 scale-105" : "text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"}`}
+              className={`flex flex-col items-center gap-1 cursor-pointer transition-all ${activeSection === "profile" ? "text-[#D4AF37] scale-105" : "text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"}`}
             >
               <User className="h-5 w-5 stroke-[2]" />
               <span className="text-[8px] font-bold uppercase tracking-wider font-sans">Profile</span>
