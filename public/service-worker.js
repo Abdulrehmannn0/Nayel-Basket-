@@ -4,12 +4,13 @@
  * Implements high-end offline caching, stale-while-revalidate, and SPA navigation fallback.
  */
 
-const CACHE_NAME = "nayel-basket-cache-v2";
-const OFFLINE_URL = "/index.html";
+const CACHE_NAME = "nayel-basket-cache-v3";
+const OFFLINE_URL = "/offline.html";
 
 const ASSETS_TO_CACHE = [
   "/",
   "/index.html",
+  "/offline.html",
   "/manifest.json",
   "/icon.svg",
   "/icon-512.jpg",
@@ -70,15 +71,15 @@ self.addEventListener("fetch", (event) => {
           if (networkResponse.status === 200) {
             const responseToCache = networkResponse.clone();
             caches.open(CACHE_NAME).then((cache) => {
-              cache.put(OFFLINE_URL, responseToCache);
+              cache.put("/index.html", responseToCache);
             });
           }
           return networkResponse;
         })
         .catch(() => {
-          // Offline fallback: serve the cached SPA shell
+          // Offline fallback: serve the cached index.html or fallback to the elegant offline.html
           console.log("[Service Worker] Offline fallback activated for navigation:", event.request.url);
-          return caches.match(OFFLINE_URL);
+          return caches.match("/index.html") || caches.match("/offline.html");
         })
     );
     return;

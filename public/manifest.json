@@ -3,6 +3,7 @@
   "short_name": "Nayel Basket",
   "description": "Bespoke Artisanal Home Decor shopping application with state-of-the-art spatial curation.",
   "start_url": "/",
+  "scope": "/",
   "id": "/nayel-basket",
   "display": "standalone",
   "orientation": "portrait",

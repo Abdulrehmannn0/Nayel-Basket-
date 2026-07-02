@@ -22,8 +22,7 @@
 }
 
 body {
-  background-color: #FFFFFF;
-  color: #000000;
+  @apply bg-white text-black dark:bg-black dark:text-white;
 }
 
 @keyframes loadingBar {

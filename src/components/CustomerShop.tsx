@@ -90,7 +90,78 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
-  const [activeProfileTab, setActiveProfileTab] = useState<"dashboard" | "orders" | "addresses" | "coupons" | "security" | "telemetry">("dashboard");
+  const [activeProfileTab, setActiveProfileTab] = useState<"dashboard" | "orders" | "addresses" | "coupons" | "security" | "telemetry" | "referral">("dashboard");
+
+  // Payment gateway simulation states
+  const [paymentStep, setPaymentStep] = useState<"idle" | "gateway_select" | "processing" | "success" | "failed">("idle");
+  const [paymentGatewayType, setPaymentGatewayType] = useState<"Stripe" | "Razorpay" | "PhonePe" | "GPay" | "Paytm" | "COD">("Stripe");
+  const [paymentLogs, setPaymentLogs] = useState<string[]>([]);
+  const [showInvoiceModal, setShowInvoiceModal] = useState<Order | null>(null);
+  const [testFailureToggle, setTestFailureToggle] = useState(false);
+  const [showRefundTracker, setShowRefundTracker] = useState(false);
+  const [refundTrackingId, setRefundTrackingId] = useState<string | null>(null);
+  const [refundStatusStep, setRefundStatusStep] = useState<number>(0);
+
+  // Referral states
+  const [referralCode, setReferralCode] = useState(() => {
+    const existing = localStorage.getItem("nb_referral_code");
+    if (existing) return existing;
+    const generated = `NAYEL-PATRON-${Math.floor(1000 + Math.random() * 9000)}`;
+    localStorage.setItem("nb_referral_code", generated);
+    return generated;
+  });
+  const [referralWalletBalance, setReferralWalletBalance] = useState(() => {
+    const existing = localStorage.getItem("nb_referral_wallet");
+    return existing ? Number(existing) : 150; // default starting rewards
+  });
+  const [referralsHistory, setReferralsHistory] = useState([
+    { name: "Aurelia Vance", date: "2026-06-15", status: "Completed", reward: 50 },
+    { name: "Dorian Gray", date: "2026-06-28", status: "Pending purchase", reward: 0 },
+    { name: "Seraphina Sterling", date: "2026-07-01", status: "Completed", reward: 50 }
+  ]);
+
+  // PWA Install States
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isInstallable, setIsInstallable] = useState(false);
+  const [isInstalled, setIsInstalled] = useState(() => {
+    return window.matchMedia("(display-mode: standalone)").matches || (navigator as any).standalone === true;
+  });
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setIsInstallable(true);
+    };
+
+    const handleAppInstalled = () => {
+      setIsInstalled(true);
+      setIsInstallable(false);
+      setDeferredPrompt(null);
+    };
+
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    window.addEventListener("appinstalled", handleAppInstalled);
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+      window.removeEventListener("appinstalled", handleAppInstalled);
+    };
+  }, []);
+
+  const triggerInstall = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === "accepted") {
+        setIsInstalled(true);
+        setIsInstallable(false);
+      }
+      setDeferredPrompt(null);
+    } else {
+      addNotification("📱 PWA Installation Guide", "To install: click your browser's menu (or Share button on iOS Safari) and select 'Add to Home Screen' or 'Install App'.", "system");
+    }
+  };
 
   // Voice & Image search states
   const [isVoiceSearching, setIsVoiceSearching] = useState(false);
@@ -287,13 +358,52 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
       addNotification("⚠️ Delivery Address Missing", "Please configure and select a shipping address.", "system");
       return;
     }
+    // Set matching gateway type
+    let targetGateway: "Stripe" | "Razorpay" | "PhonePe" | "GPay" | "Paytm" | "COD" = "Stripe";
+    if (checkoutPayment === "UPI") targetGateway = "PhonePe";
+    else if (checkoutPayment === "Wallet") targetGateway = "Paytm";
+    else if (checkoutPayment === "COD") targetGateway = "COD";
+    setPaymentGatewayType(targetGateway);
+    setPaymentStep("gateway_select");
+  };
 
-    const placed = placeOrder(matchedAddress, checkoutPayment);
-    if (placed) {
-      setViewedOrder(placed);
-      logAnalyticsEvent("purchase_complete", { order_id: placed.id, total: placed.total });
-      addNotification("✨ Order Placed Successfully", `Transaction ID: ${placed.id}. Ready to dispatch.`, "system");
-    }
+  const triggerPaymentHandshake = (bypassFailure = false) => {
+    setPaymentLogs([]);
+    setPaymentStep("processing");
+
+    const logsList = [
+      "Establishing TLS 1.3 socket layer handshake with secure credentials...",
+      "Generating ephemeral token keys using server-side security protocols...",
+      "Verifying client-side CSRF and JWT authentication header layers...",
+      "Performing velocity-based automated anti-fraud security scan...",
+      "Contacting merchant bank clearing network to settle authorized balance..."
+    ];
+
+    logsList.forEach((log, idx) => {
+      setTimeout(() => {
+        setPaymentLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${log}`]);
+      }, (idx + 1) * 500);
+    });
+
+    setTimeout(() => {
+      const isFailed = testFailureToggle && !bypassFailure;
+      if (isFailed) {
+        setPaymentStep("failed");
+        addNotification("❌ Payment Authorization Failed", "Transaction declined by card issuer bank node.", "system");
+      } else {
+        const matchedAddress = addresses.find((a) => a.id === checkoutAddressId) || addresses[0];
+        const placed = placeOrder(matchedAddress || { id: "default", name: "Patron", phone: "+1", street: "Atelier Suite", city: "Nayel Node", state: "NY", zip: "10001" }, checkoutPayment);
+        if (placed) {
+          setViewedOrder(placed);
+          setPaymentStep("success");
+          logAnalyticsEvent("purchase_complete", { order_id: placed.id, total: placed.total });
+          addNotification("✨ Order Placed Successfully", `Transaction ID: ${placed.id}. Ready to dispatch.`, "system");
+        } else {
+          setPaymentStep("failed");
+          addNotification("❌ Order Placement Exception", "Fulfillment node rejected database lock.", "system");
+        }
+      }
+    }, (logsList.length + 1) * 500);
   };
 
   const handleOpenShopLook = (itemIds: string[]) => {
@@ -1182,8 +1292,8 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
 
           {/* ORDER SUCCESS POPUP DRAWER */}
           {viewedOrder && (
-            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-              <div className="bg-white dark:bg-[#1C1C1C] max-w-md w-full rounded-3xl p-6 shadow-2xl border border-slate-100 dark:border-neutral-850 space-y-5 animate-fade-in text-black dark:text-white">
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+              <div className="bg-white dark:bg-[#1C1C1C] max-w-md w-full rounded-3xl p-6 shadow-2xl border border-slate-100 dark:border-neutral-850 space-y-4 animate-fade-in text-black dark:text-white my-8">
                 <div className="text-center space-y-2">
                   <div className="mx-auto w-12 h-12 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center">
                     <Check className="h-6 w-6 stroke-[3]" />
@@ -1192,28 +1302,89 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                   <h4 className="text-base font-black uppercase tracking-tight">Order Confirmed</h4>
                 </div>
 
-                <div className="bg-slate-50 dark:bg-neutral-850 p-4 rounded-2xl text-xs space-y-2">
-                  <div className="flex justify-between border-b pb-2">
-                    <span className="text-slate-400">Order Reference</span>
-                    <span className="font-mono font-bold text-neutral-950 dark:text-white truncate max-w-[140px]">{viewedOrder.id}</span>
+                {/* Live Order Tracking Status Stepper */}
+                <div className="bg-[#FAF9F5] dark:bg-neutral-900 border border-slate-100 dark:border-neutral-800 p-4 rounded-2xl space-y-3.5">
+                  <div className="flex justify-between items-center pb-2 border-b">
+                    <span className="text-[9px] text-slate-400 uppercase font-black tracking-widest block">Live Dispatch Tracking</span>
+                    <span className="text-[8px] bg-[#D4AF37]/15 text-[#D4AF37] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">AIR PRIORITY</span>
                   </div>
-                  <div className="flex justify-between border-b pb-2">
-                    <span className="text-slate-400">Amount Paid</span>
-                    <span className="font-mono font-bold text-neutral-950 dark:text-white">${viewedOrder.total}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Delivery Node</span>
-                    <span className="font-bold text-neutral-950 dark:text-white truncate max-w-[140px]">{viewedOrder.address.city}</span>
+                  <div className="space-y-3 text-[10px]">
+                    {[
+                      { status: "Order Logged", date: "Just now", desc: "Handshaked in secure ledger", checked: true, active: false },
+                      { status: "Atelier Assembly", date: "Pending", desc: "Custom upholstery & waxing", checked: true, active: false },
+                      { status: "Air Courier Transit", date: "Staged", desc: "Priority cargo routing", checked: false, active: true },
+                      { status: "Final Node Delivery", date: "Est. 3 Days", desc: "White-glove unboxing service", checked: false, active: false }
+                    ].map((step, idx) => (
+                      <div key={idx} className="flex gap-3 relative">
+                        <div className="flex flex-col items-center">
+                          <div className={`w-4 h-4 rounded-full flex items-center justify-center font-bold text-[8px] ${
+                            step.checked ? "bg-[#D4AF37] text-white" : step.active ? "bg-black dark:bg-white text-white dark:text-black animate-pulse" : "bg-neutral-200 text-slate-400"
+                          }`}>
+                            {step.checked ? "✓" : idx + 1}
+                          </div>
+                          {idx < 3 && <div className={`w-[2px] h-8 -my-1 ${step.checked ? "bg-[#D4AF37]" : "bg-neutral-200"}`}></div>}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-extrabold text-neutral-900 dark:text-white uppercase">{step.status}</span>
+                            <span className="text-[8px] text-slate-400 font-semibold">{step.date}</span>
+                          </div>
+                          <p className="text-[9px] text-slate-400 mt-0.5">{step.desc}</p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
 
-                <div className="flex gap-2">
+                {/* Core transaction metadata summary ledger */}
+                <div className="bg-slate-50 dark:bg-neutral-850 p-4 rounded-2xl text-xs space-y-2">
+                  <div className="flex justify-between border-b pb-1.5">
+                    <span className="text-slate-400">Order Reference</span>
+                    <span className="font-mono font-bold text-neutral-950 dark:text-white truncate max-w-[140px]">{viewedOrder.id}</span>
+                  </div>
+                  <div className="flex justify-between border-b pb-1.5">
+                    <span className="text-slate-400">Payment Gateway</span>
+                    <span className="font-sans font-bold text-[#D4AF37] uppercase">{checkoutPayment} Gateway</span>
+                  </div>
+                  <div className="flex justify-between border-b pb-1.5">
+                    <span className="text-slate-400">Amount Settled</span>
+                    <span className="font-mono font-bold text-neutral-950 dark:text-white">${viewedOrder.total}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Fulfillment Center</span>
+                    <span className="font-bold text-neutral-950 dark:text-white truncate max-w-[140px]">{viewedOrder.address.city}, {viewedOrder.address.state}</span>
+                  </div>
+                </div>
+
+                {/* Custom Action Triggers (Invoice & Refund options) */}
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <button
+                    onClick={() => setShowInvoiceModal(viewedOrder)}
+                    className="py-2.5 border border-[#D4AF37]/30 hover:border-[#D4AF37] bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white text-[9px] font-black uppercase tracking-wider rounded-xl cursor-pointer transition flex items-center justify-center gap-1.5"
+                  >
+                    📃 Download Invoice
+                  </button>
+                  <button
+                    onClick={() => {
+                      setRefundTrackingId(viewedOrder.id);
+                      setRefundStatusStep(1);
+                      setShowRefundTracker(true);
+                      addNotification("🛡️ Refund Staged", `Fulfillment reversal lodged for Order ID ${viewedOrder.id}`, "system");
+                    }}
+                    className="py-2.5 border border-red-500/20 hover:border-red-500/40 bg-red-500/5 text-red-500 text-[9px] font-black uppercase tracking-wider rounded-xl cursor-pointer transition flex items-center justify-center gap-1.5"
+                  >
+                    🛡️ Request Refund
+                  </button>
+                </div>
+
+                {/* Navigation triggers */}
+                <div className="flex gap-2 pt-2 border-t">
                   <button
                     onClick={() => {
                       setViewedOrder(null);
                       setActiveSection("home");
                     }}
-                    className="flex-1 py-3 bg-[#F5F5F5] dark:bg-neutral-800 text-neutral-900 dark:text-white text-[10px] font-black uppercase tracking-wider rounded-xl cursor-pointer"
+                    className="flex-1 py-3 bg-[#F5F5F5] dark:bg-neutral-800 text-neutral-900 dark:text-white text-[10px] font-black uppercase tracking-wider rounded-xl cursor-pointer hover:bg-[#EAEAEA] dark:hover:bg-neutral-750 transition"
                   >
                     SHOP MORE
                   </button>
@@ -1223,11 +1394,300 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                       setActiveProfileTab("orders");
                       setActiveSection("profile");
                     }}
-                    className="flex-1 py-3 bg-black dark:bg-[#D4AF37] text-white dark:text-neutral-950 text-[10px] font-black uppercase tracking-wider rounded-xl cursor-pointer"
+                    className="flex-1 py-3 bg-black dark:bg-[#D4AF37] text-white dark:text-neutral-950 text-[10px] font-black uppercase tracking-wider rounded-xl cursor-pointer shadow-md hover:scale-102 transition"
                   >
-                    TRACK ORDER
+                    MY LEDGER
                   </button>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* PAYMENT SANDBOX SIMULATOR SHEET (OVERLAY) */}
+          {paymentStep !== "idle" && paymentStep !== "success" && (
+            <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-white dark:bg-[#1A1A1A] max-w-md w-full rounded-3xl p-6 shadow-2xl border border-[#D4AF37]/20 text-black dark:text-white space-y-5 animate-fade-in">
+                
+                {/* Mode Selectors */}
+                {paymentStep === "gateway_select" && (
+                  <div className="space-y-4">
+                    <div className="text-center space-y-1">
+                      <span className="text-[9px] font-mono text-[#D4AF37] uppercase tracking-widest font-bold block">Secure Gateway Node</span>
+                      <h4 className="text-base font-black uppercase tracking-tight">Select Payment Router</h4>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { id: "Stripe", name: "Stripe", desc: "Credit/Debit Cards" },
+                        { id: "Razorpay", name: "Razorpay", desc: "Netbanking Router" },
+                        { id: "PhonePe", name: "PhonePe", desc: "UPI Gateway" },
+                        { id: "GPay", name: "Google Pay", desc: "UPI Engine" },
+                        { id: "Paytm", name: "Paytm", desc: "Wallet Hub" },
+                        { id: "COD", name: "Cash on Delivery", desc: "Manual Ledger" }
+                      ].map((gw) => (
+                        <button
+                          key={gw.id}
+                          type="button"
+                          onClick={() => setPaymentGatewayType(gw.id as any)}
+                          className={`p-3 rounded-2xl border text-left cursor-pointer transition ${
+                            paymentGatewayType === gw.id
+                              ? "bg-[#FAF9F5] dark:bg-neutral-900 border-[#D4AF37]"
+                              : "bg-white dark:bg-[#202020] border-transparent"
+                          }`}
+                        >
+                          <span className="font-extrabold text-xs block text-neutral-900 dark:text-white">{gw.name}</span>
+                          <span className="text-[8px] text-slate-400 uppercase tracking-wider block mt-1">{gw.desc}</span>
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Developer Configuration: Failure Simulator Toggle */}
+                    <div className="bg-slate-50 dark:bg-neutral-900 p-4 rounded-2xl space-y-2 text-xs border">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <span className="font-bold block text-neutral-900 dark:text-white uppercase text-[10px]">Developer Sandbox Control</span>
+                          <span className="text-[8px] text-slate-400 mt-0.5">Toggle to simulate payment failure recovery path.</span>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input 
+                            type="checkbox" 
+                            checked={testFailureToggle} 
+                            onChange={(e) => setTestFailureToggle(e.target.checked)}
+                            className="sr-only peer" 
+                          />
+                          <div className="w-9 h-5 bg-neutral-200 peer-focus:outline-none rounded-full peer dark:bg-neutral-800 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#D4AF37]"></div>
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setPaymentStep("idle")}
+                        className="flex-1 py-3 bg-[#F5F5F5] dark:bg-neutral-800 text-neutral-900 dark:text-white text-[10px] font-black uppercase rounded-xl cursor-pointer"
+                      >
+                        ABORT
+                      </button>
+                      <button
+                        onClick={() => triggerPaymentHandshake(false)}
+                        className="flex-1 py-3 bg-black dark:bg-[#D4AF37] text-white dark:text-neutral-950 text-[10px] font-black uppercase rounded-xl cursor-pointer font-sans"
+                      >
+                        INITIALIZE GATEWAY
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Real-time Handshake Logs */}
+                {paymentStep === "processing" && (
+                  <div className="space-y-4">
+                    <div className="text-center space-y-2">
+                      <div className="w-12 h-12 rounded-full border-4 border-dashed border-[#D4AF37] animate-spin mx-auto flex items-center justify-center">
+                        🔒
+                      </div>
+                      <span className="text-[9px] font-mono text-[#D4AF37] uppercase tracking-widest font-black block">LEDGER CLEARING ACTIVE</span>
+                      <h4 className="text-sm font-black uppercase tracking-tight">Processing Handshake</h4>
+                    </div>
+
+                    <div className="bg-[#121212] text-emerald-400 font-mono text-[9px] p-4 rounded-xl border border-neutral-800 space-y-1.5 max-h-44 overflow-y-auto leading-relaxed">
+                      {paymentLogs.length > 0 ? (
+                        paymentLogs.map((log, idx) => (
+                          <div key={idx} className="flex gap-2">
+                            <span className="text-neutral-600 font-bold">[{idx + 1}]</span>
+                            <span>{log}</span>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-neutral-500 italic">Initializing secured connection...</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Failure Recovery Dialog with Retry option */}
+                {paymentStep === "failed" && (
+                  <div className="space-y-4 text-center">
+                    <div className="mx-auto w-12 h-12 bg-rose-500/15 text-rose-500 rounded-full flex items-center justify-center text-xl font-bold">
+                      ✕
+                    </div>
+                    <div>
+                      <span className="text-[9px] font-mono text-rose-500 uppercase tracking-widest font-black block">TRANSACTION REJECTED</span>
+                      <h4 className="text-base font-black uppercase tracking-tight">Authorization Declined</h4>
+                    </div>
+                    <p className="text-[10px] text-slate-400 leading-relaxed max-w-xs mx-auto">
+                      The card networks or sandbox simulator node reported a temporary lock. Rest assured your funds are secure. You can safely retry.
+                    </p>
+
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          setPaymentStep("idle");
+                          addNotification("🛡️ Handshake Terminated", "Payment transaction safely rolled back.", "system");
+                        }}
+                        className="flex-1 py-3 bg-[#F5F5F5] dark:bg-neutral-800 text-neutral-900 dark:text-white text-[10px] font-black uppercase rounded-xl cursor-pointer"
+                      >
+                        CLOSE CART
+                      </button>
+                      <button
+                        onClick={() => {
+                          // Allow forcing a successful retry bypass
+                          setTestFailureToggle(false);
+                          triggerPaymentHandshake(true);
+                        }}
+                        className="flex-1 py-3 bg-black dark:bg-[#D4AF37] text-white dark:text-neutral-950 text-[10px] font-black uppercase rounded-xl cursor-pointer flex items-center justify-center gap-1.5"
+                      >
+                        🔄 RETRY PAYMENT
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+              </div>
+            </div>
+          )}
+
+          {/* INVOICE MODAL DOWNLOADABLE VIEW */}
+          {showInvoiceModal && (
+            <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-white dark:bg-[#1E1E1E] max-w-lg w-full rounded-3xl p-6 shadow-2xl border border-[#D4AF37]/20 text-neutral-900 dark:text-white space-y-5 animate-fade-in">
+                <div className="flex justify-between items-start border-b pb-4">
+                  <div>
+                    <h3 className="font-extrabold text-sm uppercase tracking-widest text-[#D4AF37]">NAYEL BASKET LUXURY</h3>
+                    <p className="text-[9px] text-slate-400 mt-0.5">Atelier Studio Logistics Node • NY</p>
+                  </div>
+                  <button 
+                    onClick={() => setShowInvoiceModal(null)}
+                    className="p-1 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {/* Printable Invoice Header */}
+                <div className="grid grid-cols-2 gap-4 text-[10px] text-slate-500">
+                  <div className="space-y-1">
+                    <span className="font-black uppercase text-[8px] text-slate-400 block">PATRON PROFILE</span>
+                    <span className="font-bold text-neutral-900 dark:text-white block">{showInvoiceModal.address.name}</span>
+                    <span>{showInvoiceModal.address.street}</span>
+                    <span>{showInvoiceModal.address.city}, {showInvoiceModal.address.state} - {showInvoiceModal.address.zip}</span>
+                  </div>
+                  <div className="space-y-1 text-right">
+                    <span className="font-black uppercase text-[8px] text-slate-400 block">LEDGER REFERENCE</span>
+                    <span className="font-mono font-bold text-neutral-900 dark:text-white block truncate max-w-[150px] ml-auto">{showInvoiceModal.id}</span>
+                    <span>Date: {new Date().toLocaleDateString()}</span>
+                    <span className="text-[#34C759] font-bold block uppercase">STATUS: SECURE_SETTLED</span>
+                  </div>
+                </div>
+
+                {/* Invoice Items Table */}
+                <div className="border-t border-b py-3 text-[10px]">
+                  <div className="grid grid-cols-3 font-extrabold text-[8px] text-slate-400 uppercase pb-2">
+                    <span>Curated Coordinate</span>
+                    <span className="text-center">Qty</span>
+                    <span className="text-right">Settled Price</span>
+                  </div>
+                  <div className="space-y-2 text-slate-600 dark:text-slate-300">
+                    {cart.map((c, index) => (
+                      <div key={index} className="grid grid-cols-3">
+                        <span className="font-semibold text-neutral-900 dark:text-white truncate">{c.product.name}</span>
+                        <span className="text-center font-mono font-bold">{c.quantity}</span>
+                        <span className="text-right font-mono font-bold">${c.product.price}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Math Ledger */}
+                <div className="text-[10px] space-y-1.5 text-slate-500 max-w-xs ml-auto">
+                  <div className="flex justify-between">
+                    <span>Atelier Subtotal</span>
+                    <span className="font-mono font-bold text-neutral-900 dark:text-white">${showInvoiceModal.total}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>VAT Logistics Tax (0%)</span>
+                    <span className="font-mono font-bold text-[#D4AF37]">Complimentary</span>
+                  </div>
+                  <div className="flex justify-between border-t pt-1.5 text-xs font-black uppercase text-neutral-900 dark:text-white">
+                    <span>Settle Balance</span>
+                    <span className="font-mono font-bold text-[#D4AF37]">${showInvoiceModal.total}</span>
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      alert(`Invoice saved securely to system files as NAYEL_INVOICE_${showInvoiceModal.id}.pdf`);
+                      setShowInvoiceModal(null);
+                    }}
+                    className="flex-1 py-3 bg-black dark:bg-[#D4AF37] text-white dark:text-neutral-950 text-[10px] font-black uppercase rounded-xl cursor-pointer text-center"
+                  >
+                    📥 SAVE INVOICE AS PDF
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* REFUND LEDGER STEPS PROGRESS TRACKER */}
+          {showRefundTracker && refundTrackingId && (
+            <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-white dark:bg-[#1E1E1E] max-w-md w-full rounded-3xl p-6 shadow-2xl border border-red-500/30 text-black dark:text-white space-y-4 animate-fade-in">
+                <div className="flex justify-between items-center border-b pb-3">
+                  <div>
+                    <span className="text-[9px] font-mono text-red-500 uppercase tracking-widest font-bold block">REVERSAL PROTOCOL</span>
+                    <h4 className="text-base font-black uppercase tracking-tight">Refund Audit Ledger</h4>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      setShowRefundTracker(false);
+                      setRefundTrackingId(null);
+                    }}
+                    className="p-1 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div className="bg-slate-50 dark:bg-neutral-900 p-4.5 rounded-2xl text-[10px] space-y-3">
+                  <div className="flex justify-between font-mono font-semibold border-b pb-1.5 text-[9px] text-slate-400 uppercase">
+                    <span>Audit Stage</span>
+                    <span>Status Tracker</span>
+                  </div>
+                  
+                  {[
+                    { title: "Fulfillment Revocation Requested", desc: "Digital handshake submitted", done: true },
+                    { title: "Escrow Bank Settlement Handshake", desc: "Securing clearing node approval", done: true, pending: false },
+                    { title: "Merchant Wallet Release Complete", desc: "Refunded to original source balance", done: false, pending: true }
+                  ].map((step, idx) => (
+                    <div key={idx} className="flex gap-3">
+                      <div className="flex flex-col items-center">
+                        <div className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[8px] font-bold ${
+                          step.done ? "bg-red-500 text-white" : step.pending ? "bg-[#D4AF37] text-white animate-pulse" : "bg-neutral-200 text-slate-400"
+                        }`}>
+                          {step.done ? "✓" : idx + 1}
+                        </div>
+                        {idx < 2 && <div className="w-[2px] h-6 bg-neutral-200 my-0.5"></div>}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-neutral-900 dark:text-white uppercase text-[9px]">{step.title}</span>
+                          {step.pending && <span className="text-[7px] text-[#D4AF37] font-black uppercase animate-pulse">PENDING CLOUD SYNC</span>}
+                        </div>
+                        <p className="text-[8px] text-slate-400 mt-0.5">{step.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  onClick={() => {
+                    setShowRefundTracker(false);
+                    setRefundTrackingId(null);
+                    addNotification("🛡️ Ledger Synced", "Escrow audit tracking completed safely.", "system");
+                  }}
+                  className="w-full py-3 bg-neutral-900 hover:bg-neutral-800 dark:bg-neutral-850 text-white font-bold uppercase tracking-wider text-[10px] rounded-xl cursor-pointer"
+                >
+                  CLOSE AUDIT LEDGER
+                </button>
               </div>
             </div>
           )}
@@ -1289,6 +1749,7 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
               { id: "addresses", label: "Addresses" },
               { id: "coupons", label: "Vouchers" },
               { id: "security", label: "Security" },
+              { id: "referral", label: "Referrals" },
               { id: "telemetry", label: "System Log" }
             ].map((tab) => (
               <button
@@ -1317,6 +1778,34 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                   <p className="text-[10px] text-slate-500 dark:text-slate-400 font-light leading-relaxed">
                     Stylists are available dynamically to coordinate spatial maps, layout suggestions, or custom upholstery parameters.
                   </p>
+                </div>
+
+                {/* PWA Installation Card */}
+                <div className="bg-[#FAF9F5] dark:bg-[#1A1A1A] p-4.5 rounded-2xl border border-[#D4AF37]/30 space-y-3 text-xs">
+                  <div className="flex justify-between items-start">
+                    <div className="space-y-1">
+                      <span className="text-[9px] bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20 px-2.5 py-0.5 rounded-full font-bold uppercase tracking-widest block w-max font-mono">
+                        {isInstalled ? "Premium Standalone Active" : "Luxury Atelier Mobile"}
+                      </span>
+                      <h4 className="text-xs font-black uppercase text-neutral-900 dark:text-white mt-1">
+                        {isInstalled ? "App Installed Successfully" : "Install Nayel Basket App"}
+                      </h4>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400 font-light leading-relaxed">
+                        {isInstalled 
+                          ? "You are running the high-performance standalone version with white-glove offline capability and swift spatial updates."
+                          : "Pin Nayel Basket directly to your home screen. Experience zero-latency slow living catalog curation and full offline checkout reversibility."}
+                      </p>
+                    </div>
+                  </div>
+                  {!isInstalled && (
+                    <button
+                      onClick={triggerInstall}
+                      className="w-full py-3 bg-black dark:bg-[#D4AF37] text-white dark:text-neutral-950 text-[10px] font-black uppercase tracking-wider rounded-xl hover:bg-neutral-900 dark:hover:bg-[#cfa52f] transition cursor-pointer flex items-center justify-center gap-2"
+                    >
+                      <Smartphone className="h-3.5 w-3.5" />
+                      <span>{isInstallable ? "Install App Now" : "Install App Guide"}</span>
+                    </button>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -1554,6 +2043,90 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                 >
                   {isBiometricRegistered ? "REMOVE BIOMETRIC KEY" : "REGISTER WEBAUTHN DEVICE PASSKEY"}
                 </button>
+              </div>
+            )}
+
+            {/* Tab: Referral program */}
+            {activeProfileTab === "referral" && (
+              <div className="space-y-5 animate-fade-in text-xs text-black dark:text-white">
+                <div className="bg-[#FAF9F5] dark:bg-[#1C1C1C] border border-[#EAE6D8]/50 dark:border-neutral-850 p-5 rounded-2xl space-y-4">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <span className="text-[8px] bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20 px-2.5 py-0.5 rounded-full font-bold uppercase tracking-widest block w-max">
+                        VIP Patron Rewards
+                      </span>
+                      <h3 className="text-xs font-black uppercase mt-1">Ambassador Network</h3>
+                    </div>
+                    <span className="font-mono font-black text-[#D4AF37] text-[13px]">${referralWalletBalance} Earned</span>
+                  </div>
+                  <p className="text-[10px] text-slate-400 leading-relaxed">
+                    Gift your inner circle 15% off their curated collections, and harvest <strong>$50</strong> into your luxury ledger upon their completed shipment.
+                  </p>
+                </div>
+
+                {/* Unique referral code card */}
+                <div className="bg-slate-50 dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-850 rounded-2xl p-4 flex justify-between items-center">
+                  <div>
+                    <span className="text-[8px] text-slate-400 uppercase font-black tracking-widest block">Your Unique Invite Code</span>
+                    <span className="font-mono text-xs font-black tracking-widest text-neutral-950 dark:text-white mt-1 block">{referralCode}</span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(referralCode);
+                      addNotification("📋 Referral Copied", "Your exclusive ambassador code was copied to clipboard.", "system");
+                    }}
+                    className="px-4 py-2 bg-black dark:bg-[#D4AF37] text-white dark:text-neutral-950 text-[9px] font-bold uppercase tracking-wider rounded-xl cursor-pointer"
+                  >
+                    COPY
+                  </button>
+                </div>
+
+                {/* Sharing Options */}
+                <div className="space-y-2">
+                  <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest block">Broadcast Invite Link</span>
+                  <div className="grid grid-cols-5 gap-2">
+                    {[
+                      { id: "whatsapp", label: "WhatsApp", icon: "💬", color: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" },
+                      { id: "instagram", label: "Instagram", icon: "📸", color: "bg-pink-500/10 text-pink-500 border-pink-500/20" },
+                      { id: "facebook", label: "Facebook", icon: "👥", color: "bg-blue-500/10 text-blue-500 border-blue-500/20" },
+                      { id: "telegram", label: "Telegram", icon: "✈️", color: "bg-sky-500/10 text-sky-500 border-sky-500/20" },
+                      { id: "link", label: "Direct", icon: "🔗", color: "bg-neutral-500/10 text-neutral-500 border-neutral-500/20" }
+                    ].map((platform) => (
+                      <button
+                        key={platform.id}
+                        type="button"
+                        onClick={() => {
+                          addNotification("📢 Broadcasted Invite", `Simulated invite shared via ${platform.label}.`, "system");
+                        }}
+                        className={`py-3 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all hover:scale-105 ${platform.color} cursor-pointer`}
+                      >
+                        <span className="text-lg">{platform.icon}</span>
+                        <span className="text-[8px] font-black uppercase tracking-wider">{platform.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* History list */}
+                <div className="space-y-2.5">
+                  <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest block">Ambassador Ledger</span>
+                  <div className="space-y-2">
+                    {referralsHistory.map((ref, idx) => (
+                      <div key={idx} className="bg-[#FAF9F5] dark:bg-[#1A1A1A] border border-[#EAE6D8]/50 dark:border-neutral-850 p-3 rounded-2xl flex justify-between items-center">
+                        <div>
+                          <span className="font-bold text-neutral-900 dark:text-white block">{ref.name}</span>
+                          <span className="text-[9px] text-slate-400 block mt-0.5">{ref.date}</span>
+                        </div>
+                        <div className="text-right">
+                          <span className={`inline-block text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                            ref.status === "Completed" ? "bg-emerald-400/15 text-emerald-500" : "bg-yellow-400/15 text-yellow-500"
+                          }`}>{ref.status}</span>
+                          <span className="font-mono font-bold text-[#D4AF37] block mt-1 text-[11px]">{ref.reward > 0 ? `+$${ref.reward}` : "--"}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
 

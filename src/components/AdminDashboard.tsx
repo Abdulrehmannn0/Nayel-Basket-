@@ -79,6 +79,39 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
     syncData();
   }, []);
 
+  // Secure auto-logout after 2 minutes of complete inactivity
+  useEffect(() => {
+    let idleTimer: NodeJS.Timeout;
+
+    const resetIdleTimer = () => {
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => {
+        console.warn("Auto Logging out admin due to complete inactivity.");
+        addNotification(
+          "🛡️ Session Expired",
+          "Admin logged out automatically due to 2 minutes of inactivity.",
+          "system"
+        );
+        onLogout();
+      }, 120000);
+    };
+
+    window.addEventListener("mousemove", resetIdleTimer);
+    window.addEventListener("keydown", resetIdleTimer);
+    window.addEventListener("scroll", resetIdleTimer);
+    window.addEventListener("click", resetIdleTimer);
+
+    resetIdleTimer();
+
+    return () => {
+      clearTimeout(idleTimer);
+      window.removeEventListener("mousemove", resetIdleTimer);
+      window.removeEventListener("keydown", resetIdleTimer);
+      window.removeEventListener("scroll", resetIdleTimer);
+      window.removeEventListener("click", resetIdleTimer);
+    };
+  }, [onLogout]);
+
   const syncData = async () => {
     if (!isSupabaseConnected()) {
       console.log("Supabase not configured or active. Falling back securely to localStorage cache.");

@@ -36,7 +36,20 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess }) => {
     }
   }, [rememberMe]);
 
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [lockoutTime, setLockoutTime] = useState(0);
+
+  useEffect(() => {
+    if (lockoutTime > 0) {
+      const timer = setInterval(() => {
+        setLockoutTime((prev) => prev - 1);
+      }, 1000);
+      return () => clearInterval(timer);
+    }
+  }, [lockoutTime]);
+
   const handleRolePreset = (selectedRole: "super_admin" | "admin" | "manager" | "staff" | "customer") => {
+    if (lockoutTime > 0) return;
     setRole(selectedRole);
     setEmail(credentials[selectedRole].email);
     setPassword(credentials[selectedRole].pass);
@@ -45,13 +58,25 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (lockoutTime > 0) {
+      setError(`Access denied. System is locked down. Retry in ${lockoutTime} seconds.`);
+      return;
+    }
     setLoading(true);
     setError("");
 
     if (isSupabaseConnected()) {
       const { data, error: authError } = await signInUser(email, password);
       if (authError) {
-        setError(authError.message || "Invalid credentials. Authentication failed.");
+        const nextAttempts = failedAttempts + 1;
+        setFailedAttempts(nextAttempts);
+        if (nextAttempts >= 5) {
+          setLockoutTime(30);
+          setFailedAttempts(0);
+          setError("SECURITY EXCEPTION: 5 consecutive failed access attempts. This terminal has been locked for 30 seconds.");
+        } else {
+          setError(`${authError.message || "Invalid credentials."} (${5 - nextAttempts} attempts remaining)`);
+        }
         setLoading(false);
         return;
       }
@@ -62,6 +87,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess }) => {
       else if (email.includes("staff")) detectedRole = "staff";
       else if (email.includes("customer")) detectedRole = "customer";
       
+      setFailedAttempts(0);
       onLoginSuccess(detectedRole, email);
       setLoading(false);
       return;
@@ -71,13 +97,30 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess }) => {
       const preset = credentials[role];
       if (email === preset.email && password === preset.pass) {
         if (use2FA && totpCode.trim() !== "123456") {
-          setError("Invalid 2FA Verification Token. (Hint: Use '123456')");
+          const nextAttempts = failedAttempts + 1;
+          setFailedAttempts(nextAttempts);
+          if (nextAttempts >= 5) {
+            setLockoutTime(30);
+            setFailedAttempts(0);
+            setError("SECURITY EXCEPTION: 5 consecutive failed access attempts. This terminal has been locked for 30 seconds.");
+          } else {
+            setError(`Invalid 2FA Verification Token. (Hint: Use '123456') (${5 - nextAttempts} attempts remaining)`);
+          }
           setLoading(false);
           return;
         }
+        setFailedAttempts(0);
         onLoginSuccess(role, email);
       } else {
-        setError("Invalid credentials for the selected role. Please try again.");
+        const nextAttempts = failedAttempts + 1;
+        setFailedAttempts(nextAttempts);
+        if (nextAttempts >= 5) {
+          setLockoutTime(30);
+          setFailedAttempts(0);
+          setError("SECURITY EXCEPTION: 5 consecutive failed access attempts. This terminal has been locked for 30 seconds.");
+        } else {
+          setError(`Invalid credentials for the selected role. Please try again. (${5 - nextAttempts} attempts remaining)`);
+        }
       }
       setLoading(false);
     }, 600);
@@ -85,6 +128,10 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess }) => {
 
   // Secure biometric authenticator simulation flow for FaceID / Fingerprint / WebAuthn
   const handleBiometricUnlock = async () => {
+    if (lockoutTime > 0) {
+      setError(`Access denied. System is locked down. Retry in ${lockoutTime} seconds.`);
+      return;
+    }
     setBiometricScanning(true);
     setError("");
     
@@ -97,6 +144,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess }) => {
       const preset = credentials[role];
       setEmail(preset.email);
       setPassword(preset.pass);
+      setFailedAttempts(0);
       onLoginSuccess(role, preset.email);
     }, 1200);
   };
