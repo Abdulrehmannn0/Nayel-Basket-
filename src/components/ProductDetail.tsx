@@ -38,7 +38,8 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product, onBack, o
     toggleWishlist, 
     compareProducts, 
     toggleCompare,
-    addNotification
+    addNotification,
+    recentlyViewed
   } = useApp();
 
   const [activeImage, setActiveImage] = useState(product.image);
@@ -628,7 +629,33 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product, onBack, o
                   className="group cursor-pointer space-y-2"
                 >
                   <div className="aspect-square bg-[#F7F7F7] rounded-2xl overflow-hidden border border-slate-100">
-                    <img src={p.image} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    <img src={p.image} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 animate-fade-in" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block">{p.brand}</span>
+                    <span className="text-xs font-semibold text-neutral-950 block truncate">{p.name}</span>
+                    <span className="text-xs font-bold text-neutral-950 font-sans block mt-0.5">${p.price}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* RECENTLY VIEWED PRODUCTS CAROUSEL */}
+        {recentlyViewed && recentlyViewed.filter(p => p.id !== product.id).length > 0 && (
+          <div className="mt-16 border-t border-slate-100 pt-12 space-y-6">
+            <h3 className="font-bold text-lg text-neutral-950 uppercase tracking-wider">Recently Viewed Curations</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              {recentlyViewed.filter(p => p.id !== product.id).slice(0, 4).map((p) => (
+                <div 
+                  id={`recent-product-${p.id}`}
+                  key={p.id} 
+                  onClick={() => onSelectProduct(p)}
+                  className="group cursor-pointer space-y-2"
+                >
+                  <div className="aspect-square bg-[#F7F7F7] rounded-2xl overflow-hidden border border-slate-100">
+                    <img src={p.image} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 animate-fade-in" />
                   </div>
                   <div>
                     <span className="text-[10px] uppercase font-bold text-slate-400 block">{p.brand}</span>

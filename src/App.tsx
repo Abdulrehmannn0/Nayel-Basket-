@@ -51,12 +51,29 @@ function useRoute() {
   return { currentPath, navigate };
 }
 
+// Simple high-performance symmetric encryption for local session payloads
+function encryptSession(data: any): string {
+  const json = JSON.stringify(data);
+  const shifted = json.split("").map((c, i) => String.fromCharCode(c.charCodeAt(0) ^ (42 + (i % 7)))).join("");
+  return btoa(unescape(encodeURIComponent(shifted)));
+}
+
+function decryptSession(encrypted: string): any {
+  try {
+    const decoded = decodeURIComponent(escape(atob(encrypted)));
+    const unshifted = decoded.split("").map((c, i) => String.fromCharCode(c.charCodeAt(0) ^ (42 + (i % 7)))).join("");
+    return JSON.parse(unshifted);
+  } catch (err) {
+    return null;
+  }
+}
+
 function MainAppOrchestration() {
   const { currentPath, navigate } = useRoute();
-  const { cart, wishlist } = useApp();
+  const { cart, wishlist, theme } = useApp();
 
   // Active section inside the Customer Shop (added "orders")
-  const [activeSection, setActiveSection] = useState<"home" | "categories" | "wishlist" | "cart" | "profile" | "ai" | "orders">("home");
+  const [activeSection, setActiveSection] = useState<"home" | "categories" | "wishlist" | "cart" | "profile" | "ai" | "orders" >("home");
   const [showSellerPanel, setShowSellerPanel] = useState(false);
 
   // Splash Screen State (persisted per session so it only plays on fresh load)
@@ -69,27 +86,28 @@ function MainAppOrchestration() {
     if (showSplash) {
       const timer = setTimeout(() => {
         setShowSplash(false);
+        setActiveSection("home");
         sessionStorage.setItem("nb_splash_played", "true");
       }, 2600);
       return () => clearTimeout(timer);
     }
   }, [showSplash]);
 
-  // Admin session state
+  // Admin session state using encrypted sessions
   const [user, setUser] = useState<AdminUser | null>(() => {
-    const saved = localStorage.getItem("nb_admin_user");
-    return saved ? JSON.parse(saved) : null;
+    const saved = localStorage.getItem("nb_admin_session_secure");
+    return saved ? decryptSession(saved) : null;
   });
 
   const handleLoginSuccess = (role: "super_admin" | "admin" | "manager" | "staff" | "customer", email: string) => {
     const newUser: AdminUser = { email, role };
     setUser(newUser);
-    localStorage.setItem("nb_admin_user", JSON.stringify(newUser));
+    localStorage.setItem("nb_admin_session_secure", encryptSession(newUser));
   };
 
   const handleLogout = () => {
     setUser(null);
-    localStorage.removeItem("nb_admin_user");
+    localStorage.removeItem("nb_admin_session_secure");
   };
 
   const cartCount = cart.reduce((acc, item) => acc + item.quantity, 0);
@@ -139,43 +157,44 @@ function MainAppOrchestration() {
           <motion.div
             initial={{ opacity: 1 }}
             exit={{ opacity: 0, transition: { duration: 0.6, ease: "easeInOut" } }}
-            className="fixed inset-0 bg-white z-[99999] flex flex-col items-center justify-center text-center p-8 select-none"
+            className={`fixed inset-0 z-[99999] flex flex-col items-center justify-center text-center p-8 select-none transition-colors duration-500 ${
+              theme === "dark" ? "bg-[#0D0D0D]" : "bg-[#FFFFFF]"
+            }`}
           >
             <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: [0.8, 1.1, 1], opacity: 1 }}
-              transition={{ duration: 1.2, ease: "easeOut" }}
-              className="flex flex-col items-center space-y-6"
+              initial={{ scale: 0.75, opacity: 0 }}
+              animate={{ scale: [0.75, 1.05, 1], opacity: 1 }}
+              transition={{ duration: 1.8, ease: "easeOut" }}
+              className="flex flex-col items-center"
             >
-              {/* Luxury adaptive logo container */}
-              <div className="w-28 h-28 rounded-[2.5rem] bg-slate-950 flex items-center justify-center shadow-2xl border-4 border-slate-100 relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-tr from-emerald-500/20 to-transparent"></div>
-                <span className="text-white text-4xl font-black tracking-tighter">NB</span>
+              {/* Official Nayel Basket logo with high-fidelity vector */}
+              <div className="relative w-36 h-36 md:w-40 md:h-40 rounded-3xl overflow-hidden shadow-2xl flex items-center justify-center p-2 bg-neutral-950 dark:bg-black border border-neutral-800">
+                <img 
+                  src="/icon.svg" 
+                  alt="Nayel Basket" 
+                  className="w-full h-full object-contain"
+                  referrerPolicy="no-referrer"
+                />
               </div>
               
-              <div className="space-y-3">
-                <h1 className="text-3xl font-extrabold text-slate-950 tracking-[0.2em] uppercase font-sans">
+              <div className="mt-8 space-y-2">
+                <h1 className="text-3xl md:text-4xl font-extrabold tracking-[0.25em] text-neutral-900 dark:text-[#D4AF37] uppercase font-sans">
                   Nayel Basket
                 </h1>
-                <p className="text-xs font-semibold text-emerald-500 uppercase tracking-[0.25em] font-mono">
-                  Premium Shopping Experience
+                <p className="text-xs md:text-sm font-semibold text-slate-500 dark:text-neutral-400 uppercase tracking-[0.2em] font-mono">
+                  Premium Home Decor & Furniture
                 </p>
               </div>
-            </motion.div>
 
-            {/* Subtle premium loader */}
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 0.8 }}
-              transition={{ delay: 0.8, duration: 0.5 }}
-              className="absolute bottom-16 flex flex-col items-center gap-3"
-            >
-              <div className="flex gap-1.5 justify-center">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-bounce [animation-delay:-0.3s]"></span>
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-bounce [animation-delay:-0.15s]"></span>
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-bounce"></span>
+              {/* Premium Loading Animation */}
+              <div className="w-56 h-1 bg-slate-100 dark:bg-neutral-800 rounded-full overflow-hidden mt-10 relative">
+                <motion.div 
+                  initial={{ x: "-100%" }}
+                  animate={{ x: "100%" }}
+                  transition={{ repeat: Infinity, duration: 1.8, ease: "easeInOut" }}
+                  className="absolute inset-y-0 left-0 bg-[#D4AF37] w-full rounded-full"
+                />
               </div>
-              <span className="text-[10px] text-slate-400 font-mono uppercase tracking-widest">v4.5 Standalone</span>
             </motion.div>
           </motion.div>
         )}

@@ -128,8 +128,8 @@ export const Navbar: React.FC<NavbarProps> = ({ activeSection, setActiveSection 
           }}
           className="flex items-center gap-1.5 cursor-pointer select-none active:scale-95 transition absolute left-1/2 -translate-x-1/2"
         >
-          <div className="bg-slate-950 dark:bg-slate-800 p-1.5 rounded-lg">
-            <span className="text-white text-[9px] font-black font-sans leading-none block">NB</span>
+          <div className="bg-neutral-950 dark:bg-neutral-900 w-7 h-7 rounded-lg overflow-hidden flex items-center justify-center p-0.5 border border-neutral-800">
+            <img src="/icon.svg" alt="Nayel Basket" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
           </div>
           <span className="text-[14px] font-black tracking-[0.2em] font-sans text-slate-950 dark:text-white uppercase">
             NAYEL BASKET
@@ -240,8 +240,8 @@ export const Navbar: React.FC<NavbarProps> = ({ activeSection, setActiveSection 
               </button>
 
               <div className="flex items-center gap-3 mt-2">
-                <div className="w-12 h-12 bg-white text-slate-950 rounded-xl flex items-center justify-center font-black text-xl shadow-md border border-neutral-200">
-                  <span>NB</span>
+                <div className="w-12 h-12 bg-neutral-950 rounded-xl flex items-center justify-center shadow-md border border-neutral-800 p-1 overflow-hidden">
+                  <img src="/icon.svg" alt="Nayel Basket" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
                 </div>
                 <div>
                   <h3 className="text-sm font-black tracking-widest text-white uppercase font-sans">NAYEL BASKET</h3>
@@ -571,8 +571,8 @@ export const Navbar: React.FC<NavbarProps> = ({ activeSection, setActiveSection 
                 <X className="h-4 w-4" />
               </button>
 
-              <div className="w-12 h-12 rounded-[1rem] bg-emerald-500 mx-auto flex items-center justify-center font-black text-slate-950 text-xl shadow-md mb-2">
-                <span>NB</span>
+              <div className="w-12 h-12 rounded-xl bg-neutral-950 mx-auto flex items-center justify-center shadow-md mb-2 p-1 border border-neutral-800 overflow-hidden">
+                <img src="/icon.svg" alt="Nayel Basket" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
               </div>
               <h2 className="text-md font-black tracking-widest uppercase">Nayel Basket</h2>
               <span className="text-[9px] text-emerald-400 font-mono tracking-widest block mt-0.5">THE ARTISANAL CRADLE</span>

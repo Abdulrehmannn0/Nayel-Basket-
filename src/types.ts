@@ -133,6 +133,8 @@ export interface Message {
   timestamp: string;
   type?: "text" | "outfit" | "comparison" | "size_recommendation" | "products_list";
   data?: any; // generic carrier for structured AI recommendations
+  isError?: boolean;
+  retryQuery?: string;
 }
 
 export interface WalletTransaction {

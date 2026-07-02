@@ -36,15 +36,41 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess }) => {
     }
   }, [rememberMe]);
 
-  const [failedAttempts, setFailedAttempts] = useState(0);
-  const [lockoutTime, setLockoutTime] = useState(0);
+  const [failedAttempts, setFailedAttempts] = useState<number>(() => {
+    const saved = localStorage.getItem("nb_admin_failed_attempts");
+    return saved ? parseInt(saved, 10) : 0;
+  });
+
+  const [lockoutTime, setLockoutTime] = useState<number>(() => {
+    const savedUntil = localStorage.getItem("nb_admin_lockout_until");
+    if (savedUntil) {
+      const remaining = Math.ceil((Number(savedUntil) - Date.now()) / 1000);
+      return remaining > 0 ? remaining : 0;
+    }
+    return 0;
+  });
+
+  useEffect(() => {
+    localStorage.setItem("nb_admin_failed_attempts", failedAttempts.toString());
+  }, [failedAttempts]);
 
   useEffect(() => {
     if (lockoutTime > 0) {
+      const until = Date.now() + lockoutTime * 1000;
+      localStorage.setItem("nb_admin_lockout_until", until.toString());
       const timer = setInterval(() => {
-        setLockoutTime((prev) => prev - 1);
+        setLockoutTime((prev) => {
+          const next = prev - 1;
+          if (next <= 0) {
+            localStorage.removeItem("nb_admin_lockout_until");
+            return 0;
+          }
+          return next;
+        });
       }, 1000);
       return () => clearInterval(timer);
+    } else {
+      localStorage.removeItem("nb_admin_lockout_until");
     }
   }, [lockoutTime]);
 
@@ -71,9 +97,9 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess }) => {
         const nextAttempts = failedAttempts + 1;
         setFailedAttempts(nextAttempts);
         if (nextAttempts >= 5) {
-          setLockoutTime(30);
+          setLockoutTime(60); // 1 minute lockout for failed attempts
           setFailedAttempts(0);
-          setError("SECURITY EXCEPTION: 5 consecutive failed access attempts. This terminal has been locked for 30 seconds.");
+          setError("SECURITY EXCEPTION: 5 consecutive failed access attempts. This terminal has been locked for 60 seconds.");
         } else {
           setError(`${authError.message || "Invalid credentials."} (${5 - nextAttempts} attempts remaining)`);
         }
@@ -100,9 +126,9 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess }) => {
           const nextAttempts = failedAttempts + 1;
           setFailedAttempts(nextAttempts);
           if (nextAttempts >= 5) {
-            setLockoutTime(30);
+            setLockoutTime(60);
             setFailedAttempts(0);
-            setError("SECURITY EXCEPTION: 5 consecutive failed access attempts. This terminal has been locked for 30 seconds.");
+            setError("SECURITY EXCEPTION: 5 consecutive failed access attempts. This terminal has been locked for 60 seconds.");
           } else {
             setError(`Invalid 2FA Verification Token. (Hint: Use '123456') (${5 - nextAttempts} attempts remaining)`);
           }
@@ -115,9 +141,9 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess }) => {
         const nextAttempts = failedAttempts + 1;
         setFailedAttempts(nextAttempts);
         if (nextAttempts >= 5) {
-          setLockoutTime(30);
+          setLockoutTime(60);
           setFailedAttempts(0);
-          setError("SECURITY EXCEPTION: 5 consecutive failed access attempts. This terminal has been locked for 30 seconds.");
+          setError("SECURITY EXCEPTION: 5 consecutive failed access attempts. This terminal has been locked for 60 seconds.");
         } else {
           setError(`Invalid credentials for the selected role. Please try again. (${5 - nextAttempts} attempts remaining)`);
         }
@@ -156,8 +182,8 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess }) => {
         <div className="absolute top-0 left-0 right-0 h-2 bg-[#34C759]"></div>
 
         <div className="text-center space-y-2 mb-8 mt-2">
-          <div className="h-12 w-12 bg-[#34C759]/10 rounded-2xl flex items-center justify-center mx-auto text-[#34C759]">
-            <KeyRound className="h-6 w-6 stroke-[2.2]" />
+          <div className="h-16 w-16 bg-neutral-950 rounded-2xl flex items-center justify-center mx-auto p-1.5 border border-neutral-800 shadow-md overflow-hidden">
+            <img src="/icon.svg" alt="Nayel Basket Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
           </div>
           <h1 className="text-2xl font-black text-black uppercase tracking-tight font-sans">
             Nayel Basket

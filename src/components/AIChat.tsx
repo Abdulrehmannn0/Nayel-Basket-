@@ -21,22 +21,61 @@ import {
   HelpCircle,
   ThumbsUp,
   Layout,
-  Maximize2
+  Maximize2,
+  Volume2,
+  VolumeX,
+  Languages,
+  Trash2,
+  RefreshCw
 } from "lucide-react";
 
 export const AIChat: React.FC = () => {
   const { products, addToCart, addNotification, theme } = useApp();
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "welcome",
-      sender: "ai",
-      text: "Greetings! I am the **Nayel Basket AI Concierge** – your private digital interior designer, styling consultant, and decor specialist. \n\nHow can I help you elevate your home today? Here is what I can assist you with right now:",
-      timestamp: new Date().toISOString()
+  const [messages, setMessages] = useState<Message[]>(() => {
+    const saved = localStorage.getItem("nb_ai_chat_history");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      } catch (e) {
+        console.warn("Stale chat history ignored:", e);
+      }
     }
-  ]);
+    return [
+      {
+        id: "welcome",
+        sender: "ai",
+        text: "Greetings! I am the **Nayel Basket AI Concierge** – your private digital interior designer, styling consultant, and decor specialist. \n\nHow can I help you elevate your home today? Here is what I can assist you with right now:",
+        timestamp: new Date().toISOString()
+      }
+    ];
+  });
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isVoiceRecording, setIsVoiceRecording] = useState(false);
+  const [autoSpeak, setAutoSpeak] = useState<boolean>(() => {
+    const saved = localStorage.getItem("nb_ai_auto_speak");
+    return saved !== "false"; // Default to true
+  });
+  const [voiceLang, setVoiceLang] = useState<"en-US" | "hi-IN">(() => {
+    const saved = localStorage.getItem("nb_ai_voice_lang");
+    return (saved as "en-US" | "hi-IN") || "en-US";
+  });
+
+  // Keep history, autoSpeak, and voiceLang persisted
+  useEffect(() => {
+    localStorage.setItem("nb_ai_chat_history", JSON.stringify(messages));
+  }, [messages]);
+
+  useEffect(() => {
+    localStorage.setItem("nb_ai_auto_speak", String(autoSpeak));
+  }, [autoSpeak]);
+
+  useEffect(() => {
+    localStorage.setItem("nb_ai_voice_lang", voiceLang);
+  }, [voiceLang]);
 
   // Space Configurator states
   const [showSizeModal, setShowSizeModal] = useState(false);
@@ -59,14 +98,29 @@ export const AIChat: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
 
-  const speakResponse = (text: string) => {
+  const speakResponse = (text: string, force = false) => {
+    if (!force && !autoSpeak) return;
     if (!window.speechSynthesis) return;
-    window.speechSynthesis.cancel();
-    const cleanText = text.replace(/[*#`_\-]/g, "").replace(/\[.*?\]/g, "");
-    const utterance = new SpeechSynthesisUtterance(cleanText.slice(0, 240));
-    utterance.rate = 1.05;
-    utterance.pitch = 1.0;
-    window.speechSynthesis.speak(utterance);
+    try {
+      window.speechSynthesis.cancel();
+      // Remove markdown characters and formatting for clean reading
+      const cleanText = text.replace(/[*#`_\-\n]/g, " ").replace(/\[.*?\]/g, "").replace(/\(.*?\)/g, "");
+      const utterance = new SpeechSynthesisUtterance(cleanText.slice(0, 240));
+      
+      // Auto-detect Hindi characters
+      const hasHindi = /[\u0900-\u097F]/.test(cleanText);
+      if (hasHindi) {
+        utterance.lang = "hi-IN";
+      } else {
+        utterance.lang = voiceLang; // Can be en-US or hi-IN (which speech engines often use for Hinglish accent)
+      }
+      
+      utterance.rate = 1.0;
+      utterance.pitch = 1.0;
+      window.speechSynthesis.speak(utterance);
+    } catch (e) {
+      console.warn("Speech synthesis failed to speak:", e);
+    }
   };
 
   const handleSendMessage = async (textToSend?: string) => {
@@ -77,14 +131,28 @@ export const AIChat: React.FC = () => {
       setInputMessage("");
     }
 
-    const userMsg: Message = {
-      id: `msg_${Date.now()}`,
-      sender: "user",
-      text: query,
-      timestamp: new Date().toISOString()
-    };
+    // If it's a retry, we can clean up any error message at the end
+    setMessages((prev) => {
+      // Remove any trailing error message if we are retrying
+      const filtered = prev.filter((m) => !m.isError);
+      
+      // Check if user's last message is identical to avoid double-printing
+      const lastMsg = filtered[filtered.length - 1];
+      if (lastMsg && lastMsg.sender === "user" && lastMsg.text === query) {
+        return filtered;
+      }
+      
+      return [
+        ...filtered,
+        {
+          id: `msg_${Date.now()}`,
+          sender: "user",
+          text: query,
+          timestamp: new Date().toISOString()
+        }
+      ];
+    });
 
-    setMessages((prev) => [...prev, userMsg]);
     setIsLoading(true);
 
     try {
@@ -92,7 +160,7 @@ export const AIChat: React.FC = () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          history: messages.slice(-10),
+          history: messages.slice(-12), // Pass enough history for context
           message: query,
           productsCatalog: products
         })
@@ -112,20 +180,28 @@ export const AIChat: React.FC = () => {
         timestamp: new Date().toISOString()
       };
 
-      setMessages((prev) => [...prev, aiMsg]);
+      setMessages((prev) => [...prev.filter((m) => !m.isError), aiMsg]);
       speakResponse(textResponse);
     } catch (err: any) {
-      const fallbackText = `✨ **Aesthetic Server Resting**: The Luxury Styling Assistant is currently refining its creative coordinates. In the meantime, our primary curated collections of **Solid European Oak**, **Amber Candles**, and **Stoneware Vases** are fully available. How else can we help harmonize your space today?`;
+      console.error("AIChat API Error:", err);
+      const friendlyErrorText = `⚠️ **Nayel Basket Styling Concierge is Temporarily Offline**
+
+We are having trouble communicating with the Gemini API to construct your luxury styling guidance. This is usually due to a missing or inactive \`GEMINI_API_KEY\` in **Settings > Secrets** or a temporary network disruption.
+
+Please make sure your API key is correctly configured and click the **Retry** button below to resend your query.`;
+
       setMessages((prev) => [
         ...prev,
         {
           id: `msg_err_${Date.now()}`,
           sender: "ai",
-          text: fallbackText,
-          timestamp: new Date().toISOString()
+          text: friendlyErrorText,
+          timestamp: new Date().toISOString(),
+          isError: true,
+          retryQuery: query
         }
       ]);
-      speakResponse(fallbackText);
+      speakResponse("Styling assistant is offline. Please retry.");
     } finally {
       setIsLoading(false);
     }
@@ -250,12 +326,16 @@ export const AIChat: React.FC = () => {
     }
 
     const recognition = new SpeechRecognition();
-    recognition.lang = "en-US";
+    recognition.lang = voiceLang;
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
 
     setIsVoiceRecording(true);
-    addNotification("🎤 Voice Input Active", "Listening to your styling ideas...", "ai");
+    addNotification(
+      "🎤 Voice Input Active", 
+      `Listening in ${voiceLang === "en-US" ? "English" : "Hindi / Hinglish"}... Speak now.`, 
+      "ai"
+    );
 
     recognition.onresult = (event: any) => {
       const speechToText = event.results[0][0].transcript;
@@ -366,6 +446,65 @@ export const AIChat: React.FC = () => {
       {/* Main Chat Interface */}
       <div className="flex-1 flex flex-col min-w-0 bg-slate-50 dark:bg-[#111111]">
         
+        {/* Chat Control Bar */}
+        <div className="px-5 py-2.5 border-b border-slate-200 dark:border-[#222222] bg-white dark:bg-[#1A1A1A] flex flex-wrap items-center justify-between gap-2.5 transition-colors duration-300">
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Auto-Speak Toggle */}
+            <button
+              id="btn-toggle-autospeak"
+              type="button"
+              onClick={() => setAutoSpeak(!autoSpeak)}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border transition cursor-pointer ${
+                autoSpeak 
+                  ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-500" 
+                  : "bg-slate-100 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-500"
+              }`}
+              title="Toggle Automated Voice Response"
+            >
+              {autoSpeak ? <Volume2 className="h-3.5 w-3.5" /> : <VolumeX className="h-3.5 w-3.5" />}
+              <span>Auto Speak: {autoSpeak ? "ON" : "OFF"}</span>
+            </button>
+
+            {/* Voice Input / Output Language Switcher */}
+            <button
+              id="btn-toggle-voicelang"
+              type="button"
+              onClick={() => setVoiceLang(voiceLang === "en-US" ? "hi-IN" : "en-US")}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-500/30 text-slate-700 dark:text-slate-300 transition cursor-pointer"
+              title="Switch Voice Input / output Accent"
+            >
+              <Languages className="h-3.5 w-3.5 text-emerald-500" />
+              <span>Voice Accent: {voiceLang === "en-US" ? "English" : "Hindi/Hinglish"}</span>
+            </button>
+          </div>
+
+          {/* Clear Chat Button */}
+          <button
+            id="btn-clear-chat"
+            type="button"
+            onClick={() => {
+              if (window.confirm("Are you sure you want to clear your conversation history? This will start a fresh chat.")) {
+                const welcomeMsg = [
+                  {
+                    id: "welcome",
+                    sender: "ai",
+                    text: "Greetings! I am the **Nayel Basket AI Concierge** – your private digital interior designer, styling consultant, and decor specialist. \n\nHow can I help you elevate your home today? Here is what I can assist you with right now:",
+                    timestamp: new Date().toISOString()
+                  }
+                ];
+                setMessages(welcomeMsg);
+                localStorage.setItem("nb_ai_chat_history", JSON.stringify(welcomeMsg));
+                addNotification("🧹 Chat Cleared", "Your conversation history was cleaned up.", "system");
+              }
+            }}
+            className="flex items-center gap-1 text-[11px] font-semibold text-rose-500 hover:text-rose-600 bg-rose-50 dark:bg-rose-950/20 hover:bg-rose-100 dark:hover:bg-rose-900/30 border border-rose-200 dark:border-rose-900/30 px-2.5 py-1 rounded-full transition cursor-pointer"
+            title="Wipe Conversational History"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            <span>Clear History</span>
+          </button>
+        </div>
+
         {/* Chat History Container */}
         <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
           {messages.map((m) => (
@@ -390,6 +529,34 @@ export const AIChat: React.FC = () => {
                 <div className="whitespace-pre-line prose prose-invert prose-sm">
                   {m.text}
                 </div>
+
+                {/* Speaker Button for Manual Reading */}
+                {m.sender === "ai" && !m.isError && (
+                  <div className="mt-2.5 flex justify-end">
+                    <button
+                      id={`btn-speak-${m.id}`}
+                      type="button"
+                      onClick={() => speakResponse(m.text, true)}
+                      className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-emerald-500 rounded-md transition cursor-pointer"
+                      title="Read Message Aloud"
+                    >
+                      <Volume2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                )}
+
+                {/* Retry Button for Errors */}
+                {m.isError && m.retryQuery && (
+                  <button
+                    id={`btn-retry-message-${m.id}`}
+                    type="button"
+                    onClick={() => handleSendMessage(m.retryQuery)}
+                    className="mt-3 flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white rounded-lg text-xs font-bold transition cursor-pointer"
+                  >
+                    <RefreshCw className="h-3 w-3 animate-spin" />
+                    Retry Query
+                  </button>
+                )}
 
                 {/* Structured Room lookbook */}
                 {m.type === "outfit" && m.data && (
