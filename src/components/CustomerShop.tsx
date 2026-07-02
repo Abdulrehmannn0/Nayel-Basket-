@@ -53,8 +53,8 @@ import {
 } from "lucide-react";
 
 interface CustomerShopProps {
-  activeSection: "home" | "categories" | "wishlist" | "cart" | "profile" | "ai";
-  setActiveSection: (sec: "home" | "categories" | "wishlist" | "cart" | "profile" | "ai") => void;
+  activeSection: "home" | "categories" | "wishlist" | "cart" | "profile" | "ai" | "orders";
+  setActiveSection: (sec: "home" | "categories" | "wishlist" | "cart" | "profile" | "ai" | "orders") => void;
   onSelectSeller: () => void;
   onSelectAdmin: () => void;
 }
@@ -101,8 +101,8 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
   const [homeCollectionTab, setHomeCollectionTab] = useState<"trending" | "bestsellers" | "newarrivals" | "editors">("trending");
   const [activeProfileTab, setActiveProfileTab] = useState<"dashboard" | "orders" | "wishlist" | "addresses" | "coupons" | "ambassador" | "concierge" | "notifications" | "security">("dashboard");
 
-  // Splash and Customer Authentication state
-  const [showSplash, setShowSplash] = useState(true);
+  // Splash and Customer Authentication state - bypassed for premium App.tsx splash
+  const [showSplash, setShowSplash] = useState(false);
   const [customerUser, setCustomerUser] = useState<any>(() => {
     const saved = localStorage.getItem("nb_customer_user");
     return saved ? JSON.parse(saved) : null;
@@ -238,6 +238,27 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
       pageViews: (prev.pageViews || 0) + 1
     }));
   }, [activeSection]);
+
+  // Synchronize orders section tab with bottom navigation selection
+  useEffect(() => {
+    if (activeSection === "orders") {
+      setActiveProfileTab("orders");
+    }
+  }, [activeSection]);
+
+  // Sync profile tab selection from the new premium side drawer
+  useEffect(() => {
+    const syncProfileTab = () => {
+      const tab = localStorage.getItem("nb_active_profile_tab");
+      if (tab) {
+        setActiveProfileTab(tab as any);
+      }
+    };
+    window.addEventListener("nb-profile-tab-changed", syncProfileTab);
+    return () => {
+      window.removeEventListener("nb-profile-tab-changed", syncProfileTab);
+    };
+  }, []);
 
   // Checkout states
   const [checkoutAddressId, setCheckoutAddressId] = useState(addresses[0]?.id || "");
@@ -500,286 +521,114 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
             </p>
           </div>
 
-          {/* SEARCH EXPERIENCE CONSOLE (Instant, Voice, AI, Recent, Suggestions, Image Search) */}
-          <div className="max-w-4xl mx-auto px-4">
-            <div className="bg-slate-50 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-800/80 rounded-3xl p-6 md:p-8 shadow-sm space-y-6">
-              
-              <div className="space-y-1.5">
-                <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] font-mono block">INTELLIGENT SELECTION ENG</span>
-                <h3 className="text-lg font-bold text-neutral-950 dark:text-white tracking-tight">Interactive Search Console</h3>
-              </div>
-
-              {/* Input row */}
-              <div className="relative">
-                <div className="relative flex items-center gap-2">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-4 top-3.5 h-4.5 w-4.5 text-slate-400" />
-                    <input
-                      id="home-instant-search"
-                      type="text"
-                      placeholder="Search art pieces, e.g. 'vase', 'oak', 'candle'..."
-                      className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl py-3.5 pl-12 pr-12 text-sm text-neutral-900 dark:text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all font-sans"
-                      value={searchQuery}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setSearchQuery(val);
-                        if (val && !recentSearches.includes(val)) {
-                          // Keep suggestions active
-                        }
-                      }}
-                    />
-                    {searchQuery && (
-                      <button
-                        onClick={() => setSearchQuery("")}
-                        className="absolute right-4 top-3.5 text-slate-400 hover:text-black dark:hover:text-white text-xs cursor-pointer"
-                      >
-                        Clear
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Voice Search Button */}
+          {/* PREMIUM MINIMALIST SEARCH BAR */}
+          <div className="max-w-2xl mx-auto px-4 relative z-40">
+            <div className="relative">
+              {/* Main Search Bar */}
+              <div className="flex items-center w-full h-[54px] rounded-[27px] bg-white dark:bg-[#1A1A1A] border border-slate-100 dark:border-neutral-800 shadow-[0_4px_20px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_30px_rgba(0,0,0,0.3)] transition-all overflow-hidden pr-3 pl-4">
+                <Search className="h-5 w-5 text-slate-400 mr-2.5 flex-shrink-0" />
+                <input
+                  id="home-instant-search"
+                  type="text"
+                  placeholder="Search furniture, decor, lighting..."
+                  className="flex-1 bg-transparent text-sm text-neutral-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none h-full font-sans"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                
+                {searchQuery && (
                   <button
-                    id="btn-voice-search-trigger"
-                    onClick={() => {
-                      setIsVoiceSearching(true);
-                      addNotification("🎤 Voice Calibration Active", "Listening for home design concepts...", "ai");
-                      setTimeout(() => {
-                        setIsVoiceSearching(false);
-                        const queries = ["Stoneware Amber Light", "Oak Coffee Table", "Minimalist Vases", "Candles"];
-                        const randomQuery = queries[Math.floor(Math.random() * queries.length)];
-                        setSearchQuery(randomQuery);
-                        // Save to recent
-                        if (!recentSearches.includes(randomQuery)) {
-                          const next = [randomQuery, ...recentSearches.slice(0, 4)];
-                          setRecentSearches(next);
-                          localStorage.setItem("nb_recent_searches", JSON.stringify(next));
-                        }
-                        addNotification("🎤 Voice Query Decoded", `Matched: "${randomQuery}"`, "ai");
-                      }, 2200);
-                    }}
-                    className="p-3.5 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 hover:border-emerald-500/40 text-slate-400 hover:text-emerald-500 rounded-2xl transition cursor-pointer"
-                    title="Voice Search"
+                    onClick={() => setSearchQuery("")}
+                    className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition text-xs mr-1 cursor-pointer"
                   >
-                    <Mic className="h-5 w-5" />
+                    ✕
                   </button>
-
-                  {/* Image Search Placeholder Trigger */}
-                  <button
-                    id="btn-image-search-trigger"
-                    onClick={() => setShowImageSearchDrawer(true)}
-                    className="p-3.5 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 hover:border-emerald-500/40 text-slate-400 hover:text-emerald-500 rounded-2xl transition cursor-pointer"
-                    title="Visual Space Search"
-                  >
-                    <Camera className="h-5 w-5" />
-                  </button>
-                </div>
-
-                {/* Instant Search Live suggestions popup */}
-                {searchQuery.trim() && (
-                  <div className="absolute left-0 right-0 mt-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl z-30 max-h-72 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
-                    <div className="p-3 bg-slate-50 dark:bg-slate-950/40 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest font-mono">
-                      Instant Search Results & Suggestions
-                    </div>
-                    {/* Filter categories */}
-                    {categoriesList.filter(c => c.toLowerCase().includes(searchQuery.toLowerCase()) && c !== "All").map(cat => (
-                      <div
-                        key={cat}
-                        onClick={() => {
-                          setSelectedCategory(cat);
-                          setActiveSection("categories");
-                          setSearchQuery("");
-                          // Save recent
-                          if (!recentSearches.includes(cat)) {
-                            const next = [cat, ...recentSearches.slice(0, 4)];
-                            setRecentSearches(next);
-                            localStorage.setItem("nb_recent_searches", JSON.stringify(next));
-                          }
-                        }}
-                        className="p-3 text-xs font-semibold text-neutral-800 dark:text-slate-200 hover:bg-emerald-500/5 hover:text-emerald-500 dark:hover:text-emerald-400 cursor-pointer flex justify-between items-center"
-                      >
-                        <span>Shop Category: <strong className="text-neutral-950 dark:text-white">{cat}</strong></span>
-                        <ChevronRight className="h-3 w-3" />
-                      </div>
-                    ))}
-
-                    {/* Filter items matching */}
-                    {products.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.brand.toLowerCase().includes(searchQuery.toLowerCase())).slice(0, 6).map(prod => (
-                      <div
-                        key={prod.id}
-                        onClick={() => {
-                          handleProductSelect(prod);
-                          setSearchQuery("");
-                          // Save recent
-                          if (!recentSearches.includes(prod.name)) {
-                            const next = [prod.name, ...recentSearches.slice(0, 4)];
-                            setRecentSearches(next);
-                            localStorage.setItem("nb_recent_searches", JSON.stringify(next));
-                          }
-                        }}
-                        className="p-3 hover:bg-slate-50 dark:hover:bg-slate-950/60 cursor-pointer flex gap-3 items-center"
-                      >
-                        <img src={prod.image} className="w-10 h-10 object-cover rounded-lg border border-slate-100 dark:border-slate-800" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-bold text-neutral-900 dark:text-slate-100 truncate">{prod.name}</p>
-                          <p className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">{prod.brand} • ${prod.price}</p>
-                        </div>
-                        <span className="text-[10px] text-emerald-500 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full font-mono">View Piece</span>
-                      </div>
-                    ))}
-
-                    {products.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && 
-                     categoriesList.filter(c => c.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && (
-                      <div className="p-4 text-center text-xs text-slate-400 italic">
-                        No immediate matches. Try searching "candle", "vase", "white oak" or "clay".
-                      </div>
-                    )}
-                  </div>
                 )}
-              </div>
 
-              {/* ASK AI CONCIERGE SEARCH MODULE */}
-              <div className="border-t border-slate-100 dark:border-slate-800/60 pt-4 space-y-3.5">
+                {/* Voice Search Button */}
                 <button
-                  id="btn-toggle-ai-prompt"
-                  onClick={() => setShowAiSearchPrompt(!showAiSearchPrompt)}
-                  className="flex items-center gap-2 text-xs font-bold text-emerald-500 dark:text-emerald-400 hover:text-emerald-600 dark:hover:text-emerald-300 transition-colors cursor-pointer"
+                  id="btn-voice-search-trigger"
+                  onClick={() => {
+                    setIsVoiceSearching(true);
+                    addNotification("🎤 Voice Calibration Active", "Listening for home design concepts...", "ai");
+                    setTimeout(() => {
+                      setIsVoiceSearching(false);
+                      const queries = ["Stoneware Amber Light", "Oak Coffee Table", "Minimalist Vases", "Candles"];
+                      const randomQuery = queries[Math.floor(Math.random() * queries.length)];
+                      setSearchQuery(randomQuery);
+                      addNotification("🎤 Voice Query Decoded", `Matched: "${randomQuery}"`, "ai");
+                    }, 2200);
+                  }}
+                  className="p-2 text-slate-400 hover:text-[#D4AF37] transition cursor-pointer"
+                  title="Voice Search"
                 >
-                  <Sparkles className="h-4 w-4 animate-pulse" />
-                  <span>{showAiSearchPrompt ? "Hide AI Concierge Search" : "✨ Query our live Gemini AI Styling Assistant"}</span>
+                  <Mic className="h-5 w-5 stroke-[1.8]" />
                 </button>
 
-                {showAiSearchPrompt && (
-                  <div className="p-4 bg-white dark:bg-slate-950 border border-slate-150 dark:border-slate-800 rounded-2xl space-y-3 animate-fade-in">
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 font-light">
-                      Describe your space's light conditions or required emotional vibe (e.g. "a sunny corner needing organic earth tones" or "cozy Japandi candle setup") and Gemini will select matches live.
-                    </p>
-                    <div className="flex gap-2">
-                      <input
-                        id="input-ai-search-prompt"
-                        type="text"
-                        placeholder="Describe your design coordinate style..."
-                        className="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2 text-xs text-neutral-800 dark:text-slate-100 focus:outline-none"
-                        value={aiSearchQuery}
-                        onChange={(e) => setAiSearchQuery(e.target.value)}
-                      />
-                      <button
-                        id="btn-submit-ai-search"
-                        onClick={async () => {
-                          if (!aiSearchQuery.trim()) return;
-                          setIsAiSearchLoading(true);
-                          setAiSearchResultText("");
-                          try {
-                            const response = await fetch("/api/gemini/chat", {
-                              method: "POST",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({
-                                message: `Review my home decor product catalog and suggest 2 products that fit this request: "${aiSearchQuery}". Suggest how to style them. Keep it extremely brief and structured in 3 sentences.`,
-                                productsCatalog: products
-                              })
-                            });
-                            if (!response.ok) throw new Error();
-                            const data = await response.json();
-                            setAiSearchResultText(data.text);
-                            // Set search terms based on keywords in recommendation
-                            const keywords = ["vase", "candle", "oak", "wood", "brass", "linen", "clay", "potter"];
-                            const matchedKeyword = keywords.find(k => data.text.toLowerCase().includes(k)) || "Ceramic";
-                            setSearchQuery(matchedKeyword);
-                          } catch (err) {
-                            setAiSearchResultText("⚠️ **Aesthetic Server Resting**: The central AI Concierge coordinates are temporarily updating. However, we highly recommend our core **Amber Candle** and **Stoneware Clay Vases** to anchor organic warm elements! Browse our collections above.");
-                          } finally {
-                            setIsAiSearchLoading(false);
-                          }
-                        }}
-                        className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-4 py-2 rounded-xl transition cursor-pointer"
-                      >
-                        {isAiSearchLoading ? "Consulting..." : "Ask AI"}
-                      </button>
+                {/* Image Search Button */}
+                <button
+                  id="btn-image-search-trigger"
+                  onClick={() => setShowImageSearchDrawer(true)}
+                  className="p-2 text-slate-400 hover:text-[#D4AF37] transition cursor-pointer"
+                  title="Image Search"
+                >
+                  <Camera className="h-5 w-5 stroke-[1.8]" />
+                </button>
+              </div>
+
+              {/* Floating Dropdown Suggestions */}
+              {searchQuery.trim() && (
+                <div className="absolute left-0 right-0 mt-2 bg-white dark:bg-[#1A1A1A] border border-slate-100 dark:border-neutral-800 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.1)] dark:shadow-[0_15px_40px_rgba(0,0,0,0.4)] z-50 max-h-[340px] overflow-y-auto divide-y divide-slate-50 dark:divide-neutral-800 animate-fade-in">
+                  
+                  {/* Category Matches */}
+                  {categoriesList.filter(c => c.toLowerCase().includes(searchQuery.toLowerCase()) && c !== "All").map(cat => (
+                    <div
+                      key={cat}
+                      onClick={() => {
+                        setSelectedCategory(cat);
+                        setActiveSection("categories");
+                        setSearchQuery("");
+                      }}
+                      className="p-3 text-xs font-semibold text-neutral-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-neutral-850 cursor-pointer flex justify-between items-center"
+                    >
+                      <span className="flex items-center gap-2">
+                        <span className="text-[#D4AF37]">📁</span>
+                        <span>Shop Category: <strong className="text-neutral-900 dark:text-white font-extrabold">{cat}</strong></span>
+                      </span>
+                      <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
                     </div>
-
-                    {isAiSearchLoading && (
-                      <div className="flex items-center gap-2 text-xs text-slate-400 italic">
-                        <span className="w-2 h-2 bg-emerald-500 rounded-full animate-ping"></span>
-                        <span>Gemini is compiling spatial harmonies...</span>
-                      </div>
-                    )}
-
-                    {aiSearchResultText && (
-                      <div className="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl text-xs leading-relaxed text-slate-700 dark:text-slate-300 border border-slate-150 dark:border-slate-800/80 prose prose-invert max-w-none">
-                        {aiSearchResultText}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* RECENT & TRENDING SEARCHES */}
-              <div className="flex flex-col gap-3 pt-2">
-                {/* Recent Searches */}
-                {recentSearches.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-2 text-xs">
-                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest font-mono">Recent:</span>
-                    {recentSearches.map((s, idx) => (
-                      <div key={idx} className="inline-flex items-center bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-full pl-3 pr-1 py-1 text-[11px] text-slate-600 dark:text-slate-300">
-                        <button
-                          onClick={() => setSearchQuery(s)}
-                          className="hover:text-emerald-500 transition-colors cursor-pointer"
-                        >
-                          {s}
-                        </button>
-                        <button
-                          onClick={() => {
-                            const next = recentSearches.filter((_, i) => i !== idx);
-                            setRecentSearches(next);
-                            localStorage.setItem("nb_recent_searches", JSON.stringify(next));
-                          }}
-                          className="ml-1.5 p-0.5 text-slate-400 hover:text-rose-500 rounded-full cursor-pointer"
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ))}
-                    <button
-                      onClick={() => {
-                        setRecentSearches([]);
-                        localStorage.removeItem("nb_recent_searches");
-                      }}
-                      className="text-[10px] text-slate-400 hover:text-black dark:hover:text-white cursor-pointer underline ml-auto"
-                    >
-                      Clear All
-                    </button>
-                  </div>
-                )}
-
-                {/* Trending Searches */}
-                <div className="flex flex-wrap items-center gap-2 text-xs">
-                  <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest font-mono">Trending:</span>
-                  {[
-                    { label: "🔥 Hand-blown Glass", query: "Lighting" },
-                    { label: "🌿 Terracotta", query: "Plants" },
-                    { label: "🪵 Solid European Oak", query: "Furniture" },
-                    { label: "🕯️ Amber Soy Tallow", query: "Amber" },
-                    { label: "🥛 Stoneware Vessels", query: "Ceramic" }
-                  ].map((pill, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => {
-                        setSearchQuery(pill.query);
-                        // Save recent
-                        if (!recentSearches.includes(pill.query)) {
-                          const next = [pill.query, ...recentSearches.slice(0, 4)];
-                          setRecentSearches(next);
-                          localStorage.setItem("nb_recent_searches", JSON.stringify(next));
-                        }
-                      }}
-                      className="bg-white dark:bg-slate-950 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 px-3 py-1 rounded-full text-[11px] text-slate-600 dark:text-slate-300 hover:text-emerald-500 dark:hover:text-emerald-400 transition cursor-pointer font-sans"
-                    >
-                      {pill.label}
-                    </button>
                   ))}
-                </div>
-              </div>
 
+                  {/* Product Matches */}
+                  {products.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.brand.toLowerCase().includes(searchQuery.toLowerCase()) || p.category.toLowerCase().includes(searchQuery.toLowerCase())).slice(0, 5).map(prod => (
+                    <div
+                      key={prod.id}
+                      onClick={() => {
+                        handleProductSelect(prod);
+                        setSearchQuery("");
+                      }}
+                      className="p-3 hover:bg-slate-50 dark:hover:bg-neutral-850 cursor-pointer flex gap-3.5 items-center transition-colors"
+                    >
+                      <img src={prod.image} className="w-11 h-11 object-cover rounded-xl border border-slate-100 dark:border-neutral-800 bg-slate-50" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold text-neutral-900 dark:text-white truncate">{prod.name}</p>
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500 font-sans tracking-wide mt-0.5">{prod.category} • {prod.brand}</p>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-xs font-mono font-black text-neutral-900 dark:text-white">${prod.price}</span>
+                        <span className="text-[8px] text-[#D4AF37] block font-bold tracking-wider uppercase mt-0.5">View</span>
+                      </div>
+                    </div>
+                  ))}
+
+                  {products.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.brand.toLowerCase().includes(searchQuery.toLowerCase()) || p.category.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && 
+                   categoriesList.filter(c => c.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && (
+                    <div className="p-5 text-center text-xs text-slate-400 dark:text-slate-500 italic">
+                      No results found for "{searchQuery}"
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
@@ -2044,7 +1893,7 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
       )}
 
       {/* CLIENT ACCOUNT PROFILE SECTION */}
-      {activeSection === "profile" && !customerUser && (
+      {(activeSection === "profile" || activeSection === "orders") && !customerUser && (
         <div className="max-w-md mx-auto py-12 px-6 animate-fade-in text-black bg-white">
           <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-xl space-y-6">
             
@@ -2484,7 +2333,7 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
       )}
 
       {/* CLIENT ACCOUNT PROFILE SECTION (LOGGED IN) */}
-      {activeSection === "profile" && customerUser && (
+      {(activeSection === "profile" || activeSection === "orders") && customerUser && (
         <div className="space-y-8 pb-16 animate-fade-in bg-white">
           
           {/* User Profile header */}

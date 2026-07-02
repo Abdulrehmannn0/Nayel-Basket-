@@ -59,6 +59,16 @@ export const AIChat: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
 
+  const speakResponse = (text: string) => {
+    if (!window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const cleanText = text.replace(/[*#`_\-]/g, "").replace(/\[.*?\]/g, "");
+    const utterance = new SpeechSynthesisUtterance(cleanText.slice(0, 240));
+    utterance.rate = 1.05;
+    utterance.pitch = 1.0;
+    window.speechSynthesis.speak(utterance);
+  };
+
   const handleSendMessage = async (textToSend?: string) => {
     const query = (textToSend || inputMessage).trim();
     if (!query) return;
@@ -93,25 +103,29 @@ export const AIChat: React.FC = () => {
       }
 
       const data = await response.json();
+      const textResponse = data.text || "I was unable to retrieve a response from the central server.";
 
       const aiMsg: Message = {
         id: `msg_${Date.now()}_ai`,
         sender: "ai",
-        text: data.text || "I was unable to retrieve a response from the central server.",
+        text: textResponse,
         timestamp: new Date().toISOString()
       };
 
       setMessages((prev) => [...prev, aiMsg]);
+      speakResponse(textResponse);
     } catch (err: any) {
+      const fallbackText = `✨ **Aesthetic Server Resting**: The Luxury Styling Assistant is currently refining its creative coordinates. In the meantime, our primary curated collections of **Solid European Oak**, **Amber Candles**, and **Stoneware Vases** are fully available. How else can we help harmonize your space today?`;
       setMessages((prev) => [
         ...prev,
         {
           id: `msg_err_${Date.now()}`,
           sender: "ai",
-          text: `✨ **Aesthetic Server Resting**: The Luxury Styling Assistant is currently refining its creative coordinates. In the meantime, our primary curated collections of **Solid European Oak**, **Amber Candles**, and **Stoneware Vases** are fully available. How else can we help harmonize your space today?`,
+          text: fallbackText,
           timestamp: new Date().toISOString()
         }
       ]);
+      speakResponse(fallbackText);
     } finally {
       setIsLoading(false);
     }
@@ -229,12 +243,35 @@ export const AIChat: React.FC = () => {
   };
 
   const startVoiceSearch = () => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      addNotification("🎤 Voice Input Error", "Speech recognition is not supported in this browser.", "ai");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = "en-US";
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
     setIsVoiceRecording(true);
-    addNotification("🎤 Voice Search Calibration", "Listening for home decor keywords...", "ai");
-    setTimeout(() => {
+    addNotification("🎤 Voice Input Active", "Listening to your styling ideas...", "ai");
+
+    recognition.onresult = (event: any) => {
+      const speechToText = event.results[0][0].transcript;
+      handleSendMessage(speechToText);
+    };
+
+    recognition.onerror = (event: any) => {
+      console.warn("Speech recognition error", event.error);
       setIsVoiceRecording(false);
-      handleSendMessage("Show me brass candle holders and lighting");
-    }, 2500);
+    };
+
+    recognition.onend = () => {
+      setIsVoiceRecording(false);
+    };
+
+    recognition.start();
   };
 
   const handleScanSimulation = (barcode: string) => {
@@ -249,10 +286,10 @@ export const AIChat: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col md:flex-row max-w-7xl w-full mx-auto bg-white dark:bg-slate-950 text-neutral-900 dark:text-white rounded-2xl border border-slate-200 dark:border-slate-800/80 overflow-hidden h-[calc(100vh-10rem)] shadow-2xl transition-colors duration-300">
+    <div className="flex-1 flex flex-col md:flex-row max-w-7xl w-full mx-auto bg-slate-50 dark:bg-[#111111] text-neutral-900 dark:text-white rounded-2xl border border-slate-200 dark:border-[#222222] overflow-hidden h-[calc(100vh-10rem)] shadow-2xl transition-colors duration-300">
       
       {/* Sidebar Shortcuts / Info */}
-      <div className="w-full md:w-80 bg-slate-50 dark:bg-slate-900 border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-800 p-5 flex flex-col gap-5 transition-colors duration-300">
+      <div className="w-full md:w-80 bg-white dark:bg-[#1A1A1A] border-b md:border-b-0 md:border-r border-slate-200 dark:border-[#222222] p-5 flex flex-col gap-5 transition-colors duration-300">
         <div>
           <div className="flex items-center gap-2 mb-2">
             <span className="p-1.5 bg-emerald-500/15 rounded-lg text-emerald-400">
@@ -327,7 +364,7 @@ export const AIChat: React.FC = () => {
       </div>
 
       {/* Main Chat Interface */}
-      <div className="flex-1 flex flex-col min-w-0 bg-slate-950">
+      <div className="flex-1 flex flex-col min-w-0 bg-slate-50 dark:bg-[#111111]">
         
         {/* Chat History Container */}
         <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
@@ -346,7 +383,7 @@ export const AIChat: React.FC = () => {
                 className={`p-3.5 rounded-2xl max-w-xl text-sm leading-relaxed shadow-md ${
                   m.sender === "user"
                     ? "bg-emerald-600 text-white rounded-tr-none"
-                    : "bg-slate-900 border border-slate-800 text-slate-200 rounded-tl-none"
+                    : "bg-white dark:bg-[#1A1A1A] border border-slate-100 dark:border-[#222222] text-slate-800 dark:text-slate-200 rounded-tl-none"
                 }`}
               >
                 {/* Regular text */}
@@ -356,28 +393,28 @@ export const AIChat: React.FC = () => {
 
                 {/* Structured Room lookbook */}
                 {m.type === "outfit" && m.data && (
-                  <div className="mt-4 border-t border-slate-200 dark:border-slate-800 pt-3 space-y-3">
-                    <div className="bg-slate-100 dark:bg-slate-950 p-3 rounded-xl border border-emerald-500/20">
-                      <h4 className="font-bold text-emerald-400 text-sm flex items-center gap-1.5">
+                  <div className="mt-4 border-t border-slate-200 dark:border-[#222222] pt-3 space-y-3">
+                    <div className="bg-slate-100 dark:bg-[#111111] p-3 rounded-xl border border-emerald-500/20">
+                      <h4 className="font-bold text-emerald-600 dark:text-emerald-400 text-sm flex items-center gap-1.5">
                         <Layout className="h-4 w-4" />
                         {m.data.lookbookTitle}
                       </h4>
-                      <p className="text-xs text-slate-300 mt-1 italic">"{m.data.stylistNotes}"</p>
+                      <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 italic">"{m.data.stylistNotes}"</p>
 
-                      <div className="my-3 divide-y divide-slate-900">
+                      <div className="my-3 divide-y divide-slate-200 dark:divide-[#222222]">
                         {m.data.items?.map((item: any, idx: number) => {
                           const catalogItem = products.find((p) => p.id === item.productId || p.name.includes(item.name));
                           return (
                             <div key={idx} className="py-2.5 flex items-center justify-between gap-2 text-xs">
                               <div className="pr-4">
-                                <span className="font-semibold text-white block">{item.name}</span>
-                                <span className="text-[10px] text-slate-400">{item.stylingRole}</span>
+                                <span className="font-semibold text-slate-800 dark:text-white block">{item.name}</span>
+                                <span className="text-[10px] text-slate-500 dark:text-slate-400">{item.stylingRole}</span>
                               </div>
                               {catalogItem && (
                                 <button
                                   id={`btn-add-from-lookbook-${catalogItem.id}`}
                                   onClick={() => addToCart(catalogItem, 1)}
-                                  className="bg-emerald-600 hover:bg-emerald-500 text-slate-950 px-2 py-1 rounded text-[10px] font-bold transition flex items-center gap-1 cursor-pointer"
+                                  className="bg-emerald-600 hover:bg-emerald-500 text-white dark:text-slate-950 px-2 py-1 rounded text-[10px] font-bold transition flex items-center gap-1 cursor-pointer"
                                 >
                                   <Plus className="h-3 w-3" />
                                   Add (${catalogItem.price})
@@ -388,8 +425,8 @@ export const AIChat: React.FC = () => {
                         })}
                       </div>
 
-                      <div className="text-[10px] text-slate-400 border-t border-slate-900 pt-2 bg-slate-900/40 p-2 rounded">
-                        <strong className="text-emerald-400">Styling advice:</strong> {m.data.accessorizingTips}
+                      <div className="text-[10px] text-slate-600 dark:text-slate-300 border-t border-slate-200 dark:border-[#222222] pt-2 bg-slate-200/40 dark:bg-slate-900/40 p-2 rounded">
+                        <strong className="text-emerald-600 dark:text-emerald-400">Styling advice:</strong> {m.data.accessorizingTips}
                       </div>
                     </div>
                   </div>
@@ -397,18 +434,18 @@ export const AIChat: React.FC = () => {
 
                 {/* Spacing advice */}
                 {m.type === "size_recommendation" && m.data && (
-                  <div className="mt-3 bg-slate-950 p-3.5 rounded-xl border border-emerald-500/20 text-xs">
+                  <div className="mt-3 bg-slate-100 dark:bg-[#111111] p-3.5 rounded-xl border border-emerald-500/20 text-xs">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="font-mono text-slate-400 uppercase tracking-wider">Aesthetic Matrix</span>
-                      <span className="bg-emerald-500/10 text-emerald-400 font-bold px-2 py-0.5 rounded border border-emerald-500/20">
+                      <span className="font-mono text-slate-500 dark:text-slate-400 uppercase tracking-wider">Aesthetic Matrix</span>
+                      <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold px-2 py-0.5 rounded border border-emerald-500/20">
                         {m.data.confidenceScore}% Confidence
                       </span>
                     </div>
                     <div className="flex items-baseline gap-2 mb-3">
-                      <span className="text-[10px] text-slate-400">Scale Recommendation:</span>
-                      <span className="text-xl font-black text-emerald-400 font-mono">{m.data.recommendedSize}</span>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400">Scale Recommendation:</span>
+                      <span className="text-xl font-black text-emerald-600 dark:text-emerald-400 font-mono">{m.data.recommendedSize}</span>
                     </div>
-                    <p className="text-slate-300 leading-relaxed bg-slate-900 p-2.5 rounded border border-slate-800">
+                    <p className="text-slate-700 dark:text-slate-300 leading-relaxed bg-white dark:bg-[#1A1A1A] p-2.5 rounded border border-slate-200 dark:border-[#222222]">
                       {m.data.fitJustification}
                     </p>
                   </div>
@@ -418,7 +455,7 @@ export const AIChat: React.FC = () => {
           ))}
 
           {isLoading && (
-            <div className="flex items-center gap-2 text-slate-400 text-xs bg-slate-900 border border-slate-800 px-3 py-2 rounded-xl w-max animate-pulse">
+            <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-xs bg-white dark:bg-[#1A1A1A] border border-slate-100 dark:border-[#222222] px-3 py-2 rounded-xl w-max animate-pulse">
               <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-400" />
               <span>Curation algorithm framing concepts...</span>
             </div>
@@ -436,7 +473,7 @@ export const AIChat: React.FC = () => {
         )}
 
         {/* Input box */}
-        <div className="p-4 border-t border-slate-800/80 bg-slate-900">
+        <div className="p-4 border-t border-slate-100 dark:border-[#222222] bg-white dark:bg-[#1A1A1A]">
           <form
             onSubmit={(e) => {
               e.preventDefault();
