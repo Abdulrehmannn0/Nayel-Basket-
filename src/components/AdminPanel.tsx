@@ -281,55 +281,61 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
   const returnRequests = orders.filter((o) => o.returnRequest !== undefined);
 
   if (!isAdminLoggedIn) {
-    /* ADMIN LOGIN GATE SCREEN */
+    /* ADMIN LOGIN GATE SCREEN WITH FULL THEME SUPPORT AND OFFICIAL LOGO */
     return (
-      <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center p-4 animate-fade-in text-black">
-        <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 max-w-md w-full shadow-2xl shadow-slate-200/50 space-y-6">
-          <div className="text-center space-y-2">
-            <div className="w-12 h-12 rounded-full bg-neutral-900 border-2 border-neutral-100 flex items-center justify-center text-white text-lg font-bold mx-auto">
-              AR
+      <div className="min-h-screen bg-slate-50 dark:bg-[#0D0D0D] flex flex-col justify-center items-center p-4 animate-fade-in text-black dark:text-white transition-colors duration-300">
+        <div className="bg-white dark:bg-[#1A1A1A] border border-slate-100 dark:border-neutral-800 rounded-[2.5rem] p-8 max-w-md w-full shadow-2xl dark:shadow-[0_16px_50px_rgba(0,0,0,0.6)] space-y-6 transition-all duration-300">
+          <div className="text-center space-y-3">
+            {/* Brand icon representation */}
+            <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-md flex items-center justify-center p-1 bg-neutral-950 dark:bg-black border border-neutral-800 mx-auto">
+              <img 
+                src="/icon-512.jpg" 
+                alt="Nayel Basket Logo" 
+                className="w-full h-full object-contain"
+                referrerPolicy="no-referrer"
+              />
             </div>
-            <h1 className="text-2xl font-black uppercase tracking-tight text-neutral-950 font-sans">
+            <h1 className="text-2xl font-black uppercase tracking-tight text-neutral-950 dark:text-[#22C55E] font-sans">
               Nayel Basket Console
             </h1>
-            <p className="text-xs text-slate-400 font-sans">
+            <p className="text-xs text-slate-400 dark:text-slate-500 font-sans">
               Access administrative, inventory cataloging, and financial settlement controls.
             </p>
           </div>
 
-          <form onSubmit={handleAdminLogin} className="space-y-4 text-xs font-semibold text-slate-700">
+          <form onSubmit={handleAdminLogin} className="space-y-4 text-xs font-semibold text-slate-700 dark:text-slate-300">
             <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Admin Email</label>
+              <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">Admin Email</label>
               <input
                 id="input-admin-email"
                 type="email"
                 required
-                className="w-full bg-[#F7F7F7] border border-slate-200 rounded-xl px-4 py-3 text-black focus:outline-none focus:border-black font-sans font-medium"
+                className="w-full bg-[#F7F7F7] dark:bg-neutral-850 border border-slate-200 dark:border-neutral-850 rounded-xl px-4 py-3 text-black dark:text-white focus:outline-none focus:border-black dark:focus:border-[#22C55E] font-sans font-medium transition-colors"
                 value={adminEmail}
                 onChange={(e) => setAdminEmail(e.target.value)}
               />
             </div>
 
             <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Password</label>
+              <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">Password</label>
               <input
                 id="input-admin-pass"
                 type="password"
                 required
-                className="w-full bg-[#F7F7F7] border border-slate-200 rounded-xl px-4 py-3 text-black focus:outline-none focus:border-black font-sans font-medium"
+                className="w-full bg-[#F7F7F7] dark:bg-neutral-850 border border-slate-200 dark:border-neutral-850 rounded-xl px-4 py-3 text-black dark:text-white focus:outline-none focus:border-black dark:focus:border-[#22C55E] font-sans font-medium transition-colors"
                 value={adminPassword}
                 onChange={(e) => setAdminPassword(e.target.value)}
               />
             </div>
 
-            <div className="bg-amber-400/10 border border-amber-400/20 rounded-xl p-3 text-[11px] text-amber-600 font-medium">
+            <div className="bg-amber-400/10 border border-amber-400/20 dark:border-amber-400/10 rounded-xl p-3 text-[11px] text-amber-600 dark:text-amber-500 font-medium leading-relaxed">
               🔑 Demo Mode: Click log in instantly with default pre-populated admin credentials.
             </div>
 
             <button
               id="btn-admin-submit"
               type="submit"
-              className="w-full bg-black hover:bg-neutral-900 text-white font-bold py-3.5 rounded-2xl tracking-wider uppercase shadow-md cursor-pointer transition-all"
+              className="w-full bg-black dark:bg-[#22C55E] hover:bg-neutral-900 dark:hover:bg-[#1fae53] text-white dark:text-neutral-950 font-bold py-3.5 rounded-2xl tracking-wider uppercase shadow-md cursor-pointer transition-all duration-300"
             >
               SECURE LOG IN
             </button>
@@ -338,7 +344,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
           <button
             id="btn-admin-cancel-login"
             onClick={onBack}
-            className="w-full text-center text-xs text-slate-400 font-bold hover:text-black uppercase cursor-pointer"
+            className="w-full text-center text-xs text-slate-400 dark:text-slate-500 font-bold hover:text-black dark:hover:text-white uppercase cursor-pointer transition-colors"
           >
             ✕ Back to Shop
           </button>
@@ -348,30 +354,30 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
   }
 
   return (
-    <div className="space-y-8 pb-16 bg-white animate-fade-in text-black">
+    <div className="space-y-8 pb-16 bg-white dark:bg-[#0D0D0D] animate-fade-in text-black dark:text-white transition-colors duration-300">
       
       {/* Admin Title Bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 dark:border-neutral-800 pb-5">
         <div>
           <button
             id="btn-admin-back"
             onClick={onBack}
-            className="flex items-center gap-1 text-xs font-bold text-slate-400 uppercase tracking-wider hover:text-black mb-2 cursor-pointer"
+            className="flex items-center gap-1 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider hover:text-black dark:hover:text-white mb-2 cursor-pointer transition-colors"
           >
             <ChevronLeft className="h-4 w-4 stroke-[2.5]" />
             <span>Return to shop</span>
           </button>
-          <h1 className="text-2xl font-black text-black flex items-center gap-2 uppercase font-sans">
-            <Settings className="h-6 w-6 text-[#34C759]" />
+          <h1 className="text-2xl font-black text-black dark:text-[#22C55E] flex items-center gap-2 uppercase font-sans">
+            <Settings className="h-6 w-6 text-[#34C759] dark:text-[#22C55E]" />
             Administrative Infrastructure Console
           </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
             Global administrative controls for inventory cataloging, multi-point metrics, coupons deployment, and editorial creativity.
           </p>
         </div>
 
         {/* Console Mode Selector */}
-        <div className="flex gap-1 bg-[#F7F7F7] border border-slate-200 p-1 rounded-2xl self-start overflow-x-auto">
+        <div className="flex gap-1 bg-[#F7F7F7] dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 p-1 rounded-2xl self-start overflow-x-auto">
           {[
             { id: "overview", label: "Analytics" },
             { id: "orders", label: `Orders (${orders.length})` },
@@ -385,8 +391,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
               onClick={() => setActiveTab(tab.id as any)}
               className={`text-[10px] uppercase tracking-wider px-3.5 py-2 rounded-xl font-bold transition-all cursor-pointer flex-shrink-0 ${
                 activeTab === tab.id
-                  ? "bg-black text-white"
-                  : "text-slate-500 hover:text-black hover:bg-slate-200/50"
+                  ? "bg-black dark:bg-[#22C55E] text-white dark:text-neutral-950"
+                  : "text-slate-500 dark:text-slate-400 hover:text-black dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-neutral-800"
               }`}
             >
               {tab.label}
@@ -400,112 +406,112 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
         <div className="space-y-8">
           {/* Main Key Metrics */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div className="bg-[#F7F7F7] border border-slate-100 rounded-2xl p-5 shadow-sm">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block font-sans">Central Gross Volume</span>
+            <div className="bg-[#F7F7F7] dark:bg-neutral-900 border border-slate-100 dark:border-neutral-800 rounded-2xl p-5 shadow-sm">
+              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block font-sans">Central Gross Volume</span>
               <div className="flex items-baseline gap-1.5 mt-2">
-                <span className="text-2xl font-black font-sans text-black">${(totalSystemSales + 5800).toFixed(2)}</span>
-                <span className="text-xs text-[#34C759] font-bold">+28.4%</span>
+                <span className="text-2xl font-black font-sans text-black dark:text-white">${(totalSystemSales + 5800).toFixed(2)}</span>
+                <span className="text-xs text-[#34C759] dark:text-[#22C55E] font-bold">+28.4%</span>
               </div>
-              <p className="text-[10px] text-slate-400 mt-1">Live synchronized checkout payloads</p>
+              <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">Live synchronized checkout payloads</p>
             </div>
 
-            <div className="bg-[#F7F7F7] border border-slate-100 rounded-2xl p-5 shadow-sm">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block font-sans">Fulfillment Queue</span>
+            <div className="bg-[#F7F7F7] dark:bg-neutral-900 border border-slate-100 dark:border-neutral-800 rounded-2xl p-5 shadow-sm">
+              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block font-sans">Fulfillment Queue</span>
               <div className="flex items-baseline gap-1.5 mt-2">
                 <span className="text-2xl font-black font-sans text-amber-500">{pendingFulfillmentCount} Pending</span>
               </div>
-              <p className="text-[10px] text-slate-400 mt-1">Automatic label generation pipelines</p>
+              <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">Automatic label generation pipelines</p>
             </div>
 
-            <div className="bg-[#F7F7F7] border border-slate-100 rounded-2xl p-5 shadow-sm">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block font-sans">Elite Patrons</span>
+            <div className="bg-[#F7F7F7] dark:bg-neutral-900 border border-slate-100 dark:border-neutral-800 rounded-2xl p-5 shadow-sm">
+              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block font-sans">Elite Patrons</span>
               <div className="flex items-baseline gap-1.5 mt-2">
-                <span className="text-2xl font-black font-sans text-black">{customers.length} Accounts</span>
+                <span className="text-2xl font-black font-sans text-black dark:text-white">{customers.length} Accounts</span>
               </div>
-              <p className="text-[10px] text-slate-400 mt-1">Bespoke luxury newsletter active</p>
+              <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">Bespoke luxury newsletter active</p>
             </div>
 
-            <div className="bg-[#F7F7F7] border border-slate-100 rounded-2xl p-5 shadow-sm">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block font-sans">Active Vouchers</span>
+            <div className="bg-[#F7F7F7] dark:bg-neutral-900 border border-slate-100 dark:border-neutral-800 rounded-2xl p-5 shadow-sm">
+              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block font-sans">Active Vouchers</span>
               <div className="flex items-baseline gap-1.5 mt-2">
-                <span className="text-2xl font-black font-sans text-[#34C759]">{systemCoupons.length} deployed</span>
+                <span className="text-2xl font-black font-sans text-[#34C759] dark:text-[#22C55E]">{systemCoupons.length} deployed</span>
               </div>
-              <p className="text-[10px] text-slate-400 mt-1">Applying global active markdowns</p>
+              <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">Applying global active markdowns</p>
             </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Visual breakdown chart */}
-            <div className="lg:col-span-2 bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm space-y-4">
-              <h3 className="font-bold text-black text-sm uppercase tracking-wider flex items-center gap-2">
-                <BarChart className="h-5 w-5 text-black" />
+            <div className="lg:col-span-2 bg-white dark:bg-[#1A1A1A] border border-slate-100 dark:border-neutral-800 rounded-[2rem] p-6 shadow-sm space-y-4">
+              <h3 className="font-bold text-black dark:text-white text-sm uppercase tracking-wider flex items-center gap-2">
+                <BarChart className="h-5 w-5 text-black dark:text-[#22C55E]" />
                 Category Distribution Analytics
               </h3>
-              <p className="text-xs text-slate-400">Share of revenue and interest indexing across curated home decor departments.</p>
+              <p className="text-xs text-slate-400 dark:text-slate-500">Share of revenue and interest indexing across curated home decor departments.</p>
 
-              <div className="flex justify-center py-6 bg-[#F7F7F7]/60 rounded-2xl border border-slate-100">
+              <div className="flex justify-center py-6 bg-[#F7F7F7]/60 dark:bg-neutral-900/60 rounded-2xl border border-slate-100 dark:border-neutral-800">
                 <svg viewBox="0 0 100 100" className="w-40 h-40">
                   <circle cx="50" cy="50" r="40" fill="transparent" stroke="#E5E5E5" strokeWidth="12" />
                   <circle cx="50" cy="50" r="40" fill="transparent" stroke="#34C759" strokeWidth="12" strokeDasharray="251" strokeDashoffset="50" />
-                  <circle cx="50" cy="50" r="40" fill="transparent" stroke="#000000" strokeWidth="12" strokeDasharray="251" strokeDashoffset="140" />
+                  <circle cx="50" cy="50" r="40" fill="transparent" stroke="#22C55E" strokeWidth="12" strokeDasharray="251" strokeDashoffset="140" />
                   <circle cx="50" cy="50" r="40" fill="transparent" stroke="#666666" strokeWidth="12" strokeDasharray="251" strokeDashoffset="200" />
                   <circle cx="50" cy="50" r="40" fill="transparent" stroke="#CCCCCC" strokeWidth="12" strokeDasharray="251" strokeDashoffset="225" />
                 </svg>
               </div>
 
               <div className="grid grid-cols-4 gap-2 text-[10px] text-center font-bold">
-                <div className="p-2 bg-[#F7F7F7] rounded-xl border border-slate-100">
+                <div className="p-2 bg-[#F7F7F7] dark:bg-neutral-850 rounded-xl border border-slate-100 dark:border-neutral-800">
                   <span className="block h-2 w-2 rounded-full bg-[#34C759] mx-auto mb-1"></span>
-                  <span className="text-slate-400">Furniture</span>
-                  <span className="block text-black font-sans mt-0.5">45%</span>
+                  <span className="text-slate-400 dark:text-slate-500">Furniture</span>
+                  <span className="block text-black dark:text-white font-sans mt-0.5">45%</span>
                 </div>
-                <div className="p-2 bg-[#F7F7F7] rounded-xl border border-slate-100">
-                  <span className="block h-2 w-2 rounded-full bg-black mx-auto mb-1"></span>
-                  <span className="text-slate-400">Lighting</span>
-                  <span className="block text-black font-sans mt-0.5">25%</span>
+                <div className="p-2 bg-[#F7F7F7] dark:bg-neutral-850 rounded-xl border border-slate-100 dark:border-neutral-800">
+                  <span className="block h-2 w-2 rounded-full bg-[#22C55E] mx-auto mb-1"></span>
+                  <span className="text-slate-400 dark:text-slate-500">Lighting</span>
+                  <span className="block text-black dark:text-white font-sans mt-0.5">25%</span>
                 </div>
-                <div className="p-2 bg-[#F7F7F7] rounded-xl border border-slate-100">
+                <div className="p-2 bg-[#F7F7F7] dark:bg-neutral-850 rounded-xl border border-slate-100 dark:border-neutral-800">
                   <span className="block h-2 w-2 rounded-full bg-slate-500 mx-auto mb-1"></span>
-                  <span className="text-slate-400">Rugs</span>
-                  <span className="block text-black font-sans mt-0.5">20%</span>
+                  <span className="text-slate-400 dark:text-slate-500">Rugs</span>
+                  <span className="block text-black dark:text-white font-sans mt-0.5">20%</span>
                 </div>
-                <div className="p-2 bg-[#F7F7F7] rounded-xl border border-slate-100">
+                <div className="p-2 bg-[#F7F7F7] dark:bg-neutral-850 rounded-xl border border-slate-100 dark:border-neutral-800">
                   <span className="block h-2 w-2 rounded-full bg-slate-300 mx-auto mb-1"></span>
-                  <span className="text-slate-400">Vases & Pots</span>
-                  <span className="block text-black font-sans mt-0.5">10%</span>
+                  <span className="text-slate-400 dark:text-slate-500">Vases & Pots</span>
+                  <span className="block text-black dark:text-white font-sans mt-0.5">10%</span>
                 </div>
               </div>
             </div>
 
             {/* Quick action: Global notifications deployer */}
-            <div className="lg:col-span-1 bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm space-y-4">
-              <h3 className="font-bold text-black text-sm uppercase tracking-wider flex items-center gap-2">
-                <BellRing className="h-5 w-5 text-black" /> Push Broadcaster
+            <div className="lg:col-span-1 bg-white dark:bg-[#1A1A1A] border border-slate-100 dark:border-neutral-800 rounded-[2rem] p-6 shadow-sm space-y-4">
+              <h3 className="font-bold text-black dark:text-white text-sm uppercase tracking-wider flex items-center gap-2">
+                <BellRing className="h-5 w-5 text-black dark:text-[#22C55E]" /> Push Broadcaster
               </h3>
-              <p className="text-xs text-slate-400">Broadcast marketing offers or system updates directly to client dashboards.</p>
+              <p className="text-xs text-slate-400 dark:text-slate-500">Broadcast marketing offers or system updates directly to client dashboards.</p>
 
-              <form onSubmit={handleSendPush} className="space-y-3 font-semibold text-slate-700">
+              <form onSubmit={handleSendPush} className="space-y-3 font-semibold text-slate-700 dark:text-slate-300">
                 <div className="space-y-1">
-                  <label className="text-[10px] text-slate-400 uppercase">Alert Title</label>
+                  <label className="text-[10px] text-slate-400 dark:text-slate-500 uppercase">Alert Title</label>
                   <input
                     id="input-broadcast-title"
                     type="text"
                     required
                     placeholder="e.g. Amber glass lookbook"
-                    className="w-full bg-[#F7F7F7] border border-slate-200 rounded-xl px-3 py-2 text-xs text-black focus:outline-none focus:border-black font-sans"
+                    className="w-full bg-[#F7F7F7] dark:bg-neutral-850 border border-slate-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-black dark:text-white focus:outline-none focus:border-black dark:focus:border-[#22C55E] font-sans"
                     value={pushTitle}
                     onChange={(e) => setPushTitle(e.target.value)}
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] text-slate-400 uppercase">Alert Body Copy</label>
+                  <label className="text-[10px] text-slate-400 dark:text-slate-500 uppercase">Alert Body Copy</label>
                   <textarea
                     id="textarea-broadcast-desc"
                     rows={3}
                     required
                     placeholder="A cinematic explore of hand-blown pendant lights..."
-                    className="w-full bg-[#F7F7F7] border border-slate-200 rounded-xl px-3 py-2 text-xs text-black focus:outline-none focus:border-black font-sans"
+                    className="w-full bg-[#F7F7F7] dark:bg-neutral-850 border border-slate-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-black dark:text-white focus:outline-none focus:border-black dark:focus:border-[#22C55E] font-sans"
                     value={pushBody}
                     onChange={(e) => setPushBody(e.target.value)}
                   />
@@ -514,17 +520,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                 <button
                   id="btn-broadcast-submit"
                   type="submit"
-                  className="w-full py-2.5 bg-black hover:bg-neutral-900 text-white font-bold text-xs rounded-xl tracking-wider uppercase cursor-pointer shadow-md"
+                  className="w-full py-2.5 bg-black dark:bg-[#22C55E] hover:bg-neutral-900 dark:hover:bg-[#1fae53] text-white dark:text-neutral-950 font-bold text-xs rounded-xl tracking-wider uppercase cursor-pointer shadow-md transition-colors"
                 >
                   BROADCAST ALERT NOW
                 </button>
               </form>
 
-              <div className="border-t pt-4 space-y-2">
-                <span className="text-[9px] font-bold text-slate-400 uppercase block">Alert Dispatch Logs</span>
+              <div className="border-t border-slate-100 dark:border-neutral-800 pt-4 space-y-2">
+                <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase block">Alert Dispatch Logs</span>
                 <div className="max-h-24 overflow-y-auto space-y-1 text-[10px] font-medium text-slate-500 font-mono">
                   {pushLog.map((log) => (
-                    <div key={log.id} className="p-2 bg-[#F7F7F7] rounded border">
+                    <div key={log.id} className="p-2 bg-[#F7F7F7] dark:bg-neutral-850 rounded border border-slate-100 dark:border-neutral-800 text-slate-600 dark:text-slate-350">
                       <strong>{log.title}</strong>: {log.body}
                     </div>
                   ))}
@@ -540,16 +546,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
         <div className="space-y-6">
           <div className="flex justify-between items-center">
             <div>
-              <h3 className="font-bold text-neutral-950 text-sm uppercase tracking-wider">Client Logistics Queue</h3>
-              <p className="text-xs text-slate-400 mt-0.5">Progress secure delivery states or process return refunds immediately.</p>
+              <h3 className="font-bold text-neutral-950 dark:text-neutral-50 text-sm uppercase tracking-wider">Client Logistics Queue</h3>
+              <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Progress secure delivery states or process return refunds immediately.</p>
             </div>
           </div>
 
-          <div className="bg-white border border-slate-100 rounded-[2rem] overflow-hidden shadow-sm">
+          <div className="bg-white dark:bg-[#1A1A1A] border border-slate-100 dark:border-neutral-800 rounded-[2rem] overflow-hidden shadow-sm transition-colors">
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs text-slate-600">
+              <table className="w-full text-left text-xs text-slate-600 dark:text-slate-300">
                 <thead>
-                  <tr className="bg-[#F7F7F7] border-b border-slate-100 text-slate-400 font-bold uppercase text-[9px] tracking-wider">
+                  <tr className="bg-[#F7F7F7] dark:bg-neutral-900 border-b border-slate-100 dark:border-neutral-800 text-slate-400 dark:text-slate-500 font-bold uppercase text-[9px] tracking-wider">
                     <th className="p-4">Transaction Code</th>
                     <th className="p-4">Customer</th>
                     <th className="p-4">Total Price</th>
@@ -557,25 +563,25 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                     <th className="p-4 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 font-medium">
+                <tbody className="divide-y divide-slate-100 dark:divide-neutral-800 font-medium">
                   {orders.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="p-8 text-center text-slate-400 font-light">
+                      <td colSpan={5} className="p-8 text-center text-slate-400 dark:text-slate-500 font-light">
                         No active client checkout transactions logged.
                       </td>
                     </tr>
                   ) : (
                     orders.map((ord) => (
-                      <tr key={ord.id} className="hover:bg-neutral-50/50 transition-colors">
-                        <td className="p-4 font-bold text-black">{ord.id}</td>
+                      <tr key={ord.id} className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30 transition-colors">
+                        <td className="p-4 font-bold text-black dark:text-white">{ord.id}</td>
                         <td className="p-4">
-                          <span className="block text-black font-semibold">{ord.shippingAddress.fullName}</span>
-                          <span className="text-[10px] text-slate-400 block mt-0.5">{ord.shippingAddress.city}, {ord.shippingAddress.postalCode}</span>
+                          <span className="block text-black dark:text-white font-semibold">{ord.shippingAddress.fullName}</span>
+                          <span className="text-[10px] text-slate-400 dark:text-slate-500 block mt-0.5">{ord.shippingAddress.city}, {ord.shippingAddress.postalCode}</span>
                         </td>
-                        <td className="p-4 font-mono font-bold text-black">${ord.total}</td>
+                        <td className="p-4 font-mono font-bold text-black dark:text-white">${ord.total}</td>
                         <td className="p-4 text-center">
                           <span className={`inline-block text-[9px] font-bold uppercase px-2 py-1 rounded font-mono ${
-                            ord.status === "Delivered" ? "bg-[#34C759]/10 text-[#34C759]" : "bg-amber-400/10 text-amber-600"
+                            ord.status === "Delivered" ? "bg-[#34C759]/10 text-[#34C759]" : "bg-amber-400/10 text-amber-600 dark:text-amber-500"
                           }`}>
                             {ord.status}
                           </span>
@@ -589,7 +595,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                                   updateOrderStatus(ord.id, "Shipped");
                                   addNotification("🚚 Courier Dispatched", `Order ${ord.id} status modified to Shipped.`, "system");
                                 }}
-                                className="px-2.5 py-1.5 bg-black hover:bg-neutral-900 text-white font-bold rounded-lg text-[10px] uppercase cursor-pointer"
+                                className="px-2.5 py-1.5 bg-black dark:bg-[#22C55E] hover:bg-neutral-900 dark:hover:bg-[#1fae53] text-white dark:text-neutral-950 font-bold rounded-lg text-[10px] uppercase cursor-pointer transition-colors"
                               >
                                 Ship Order
                               </button>
@@ -601,7 +607,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                                   updateOrderStatus(ord.id, "Delivered");
                                   addNotification("✅ Delivery Confirmed", `Order ${ord.id} status modified to Delivered.`, "system");
                                 }}
-                                className="px-2.5 py-1.5 bg-[#34C759] hover:bg-[#2eb04e] text-white font-bold rounded-lg text-[10px] uppercase cursor-pointer"
+                                className="px-2.5 py-1.5 bg-[#34C759] dark:bg-[#22C55E] hover:bg-[#2eb04e] dark:hover:bg-[#1fae53] text-white dark:text-neutral-950 font-bold rounded-lg text-[10px] uppercase cursor-pointer transition-colors"
                               >
                                 Complete Delivery
                               </button>
@@ -615,7 +621,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                                   approveReturnRequest(ord.returnRequest!.id);
                                   addNotification("💰 Refund Approved", `Refund processed for order ${ord.id} instantly.`, "system");
                                 }}
-                                className="px-2.5 py-1.5 bg-[#34C759]/10 hover:bg-[#34C759]/20 text-[#34C759] font-bold rounded-lg text-[10px] uppercase cursor-pointer border border-[#34C759]/20 animate-pulse"
+                                className="px-2.5 py-1.5 bg-[#34C759]/10 hover:bg-[#34C759]/20 text-[#34C759] dark:text-[#22C55E] font-bold rounded-lg text-[10px] uppercase cursor-pointer border border-[#34C759]/20 dark:border-[#22C55E]/20 animate-pulse"
                               >
                                 Approve Refund (${ord.returnRequest.refundAmount})
                               </button>

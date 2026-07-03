@@ -4,7 +4,7 @@
  * Implements high-end offline caching, stale-while-revalidate, and SPA navigation fallback.
  */
 
-const CACHE_NAME = "nayel-basket-cache-v3";
+const CACHE_NAME = "nayel-basket-cache-v4";
 const OFFLINE_URL = "/offline.html";
 
 const ASSETS_TO_CACHE = [
