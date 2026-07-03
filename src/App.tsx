@@ -130,12 +130,12 @@ function MainAppOrchestration() {
 
   if (isAdminRoute) {
     return (
-      <div className="min-h-screen bg-[#FDFDFD] text-black font-sans antialiased relative">
+      <div className="min-h-screen bg-[#FDFDFD] dark:bg-[#0D0D0D] text-black dark:text-white font-sans antialiased relative transition-colors duration-300">
         {/* Float action button to go back to shop */}
         <button
           id="btn-admin-to-shop"
           onClick={() => navigate("/")}
-          className="fixed top-4 left-4 z-50 bg-white hover:bg-neutral-50 border border-slate-200 text-black text-xs font-bold px-4 py-2.5 rounded-full flex items-center gap-1.5 shadow-md cursor-pointer transition duration-300"
+          className="fixed top-4 left-4 z-50 bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800 border border-slate-200 dark:border-neutral-800 text-black dark:text-white text-xs font-bold px-4 py-2.5 rounded-full flex items-center gap-1.5 shadow-md cursor-pointer transition duration-300"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           <span>BACK TO SHOP</span>
@@ -157,7 +157,7 @@ function MainAppOrchestration() {
   // Render Seller Panel Mode
   if (showSellerPanel) {
     return (
-      <div className="min-h-screen bg-[#FDFDFD] text-black font-sans antialiased">
+      <div className="min-h-screen bg-[#FDFDFD] dark:bg-[#0D0D0D] text-black dark:text-white font-sans antialiased transition-colors duration-300">
         <Suspense fallback={<ShimmerLoader />}>
           <SellerPanel onBack={() => setShowSellerPanel(false)} />
         </Suspense>
@@ -216,18 +216,18 @@ function MainAppOrchestration() {
         )}
       </AnimatePresence>
 
-      {/* Main App Desktop-First Shell with translate-z-0 trick to clamp fixed elements inside the mock viewport */}
-      <div className="min-h-screen bg-neutral-100 dark:bg-[#111111] flex flex-col justify-center items-center font-sans antialiased text-black dark:text-white transition-colors duration-300">
-        <div className="w-full max-w-[480px] min-h-screen md:min-h-[92vh] md:max-h-[92vh] md:my-4 bg-white dark:bg-[#111111] shadow-2xl relative flex flex-col overflow-hidden md:rounded-[2.5rem] md:border-8 border-slate-900 dark:border-[#222222] transform translate-z-0">
+      {/* Main App Desktop-First Shell with rigid full-height viewport constraints */}
+      <div className="h-screen w-screen overflow-hidden bg-neutral-100 dark:bg-[#111111] flex flex-col justify-center items-center font-sans antialiased text-black dark:text-white transition-colors duration-300">
+        <div className="w-full max-w-[480px] h-full md:h-[92vh] md:my-4 bg-white dark:bg-[#111111] shadow-2xl relative flex flex-col overflow-hidden md:rounded-[2.5rem] md:border-8 border-slate-900 dark:border-[#222222] transform translate-z-0">
           
-          {/* Header Navbar */}
+          {/* Header Navbar - Locked to 60px and stays permanently at top */}
           <Navbar 
             activeSection={activeSection} 
             setActiveSection={setActiveSection} 
           />
 
-          {/* Main Scrollable Content Area */}
-          <main className="flex-1 overflow-y-auto scrollbar-hide pb-28">
+          {/* Main Scrollable Content Area - Only this middle container scrolls */}
+          <main className="flex-1 overflow-y-auto scrollbar-hide pb-24">
             <Suspense fallback={<ShimmerLoader />}>
               <CustomerShop 
                 activeSection={activeSection}
@@ -238,8 +238,8 @@ function MainAppOrchestration() {
             </Suspense>
           </main>
 
-          {/* Mobile-Native Bottom Floating Navigation Bar with Premium iOS/Android Safe Area Styling */}
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50 w-[94%] bg-white/95 dark:bg-[#1A1A1A]/95 backdrop-blur-xl border border-slate-200/40 dark:border-neutral-850 rounded-3xl py-3 px-4 shadow-[0_12px_40px_rgba(0,0,0,0.12)] dark:shadow-[0_16px_50px_rgba(0,0,0,0.5)] flex items-center justify-between transition-all duration-300 pb-[calc(12px+env(safe-area-inset-bottom))]">
+          {/* Mobile-Native Bottom Fixed Navigation Bar with Premium Safe Area Styling */}
+          <div className="absolute bottom-0 left-0 right-0 z-50 w-full bg-white/95 dark:bg-[#111111]/95 backdrop-blur-xl border-t border-slate-200/50 dark:border-neutral-800/60 py-2.5 px-6 shadow-[0_-4px_24px_rgba(0,0,0,0.05)] flex items-center justify-between transition-all duration-300 pb-[calc(10px+env(safe-area-inset-bottom))] h-[64px] flex-shrink-0">
             <button
               id="mobile-nav-home"
               onClick={() => {

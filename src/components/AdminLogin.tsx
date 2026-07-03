@@ -176,25 +176,25 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess }) => {
   };
 
   return (
-    <div className="min-h-screen bg-[#FDFDFD] flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden">
+    <div className="min-h-screen bg-[#FDFDFD] dark:bg-[#0D0D0D] flex items-center justify-center p-4 transition-colors duration-300">
+      <div className="w-full max-w-md bg-white dark:bg-[#1A1A1A] border border-slate-100 dark:border-neutral-800 rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden transition-all duration-300">
         {/* Decorative Green Accent Border */}
-        <div className="absolute top-0 left-0 right-0 h-2 bg-[#34C759]"></div>
+        <div className="absolute top-0 left-0 right-0 h-2 bg-[#22C55E]"></div>
 
         <div className="text-center space-y-2 mb-8 mt-2">
-          <div className="h-16 w-16 bg-neutral-950 rounded-2xl flex items-center justify-center mx-auto p-1.5 border border-neutral-800 shadow-md overflow-hidden">
+          <div className="h-16 w-16 bg-neutral-950 dark:bg-black rounded-2xl flex items-center justify-center mx-auto p-1.5 border border-neutral-800 shadow-md overflow-hidden">
             <img src="/icon-512.jpg" alt="Nayel Basket Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
           </div>
-          <h1 className="text-2xl font-black text-black uppercase tracking-tight font-sans">
+          <h1 className="text-2xl font-black text-black dark:text-[#22C55E] uppercase tracking-tight font-sans">
             Nayel Basket
           </h1>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">
+          <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest font-mono">
             Enterprise Management Gateway
           </p>
         </div>
 
         {/* 5-Role Presets Selector Grid */}
-        <div className="grid grid-cols-5 gap-1 p-1 bg-[#F7F7F7] rounded-xl mb-6 text-center">
+        <div className="grid grid-cols-5 gap-1 p-1 bg-[#F7F7F7] dark:bg-neutral-900 rounded-xl mb-6 text-center">
           {(["super_admin", "admin", "manager", "staff", "customer"] as const).map((r) => (
             <button
               key={r}
@@ -204,8 +204,8 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess }) => {
               title={r.replace("_", " ").toUpperCase()}
               className={`py-2 px-0.5 rounded-lg text-[8px] font-black uppercase tracking-tighter transition-all cursor-pointer truncate ${
                 role === r
-                  ? "bg-black text-white shadow-md"
-                  : "text-slate-400 hover:text-black hover:bg-neutral-100"
+                  ? "bg-black dark:bg-[#22C55E] text-white dark:text-neutral-950 shadow-md"
+                  : "text-slate-400 dark:text-slate-500 hover:text-black dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800"
               }`}
             >
               {r === "super_admin" ? "Super" : r}
@@ -215,7 +215,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess }) => {
 
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
           <div>
-            <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5 font-mono">
+            <label className="block text-[10px] font-bold uppercase text-slate-400 dark:text-slate-500 mb-1.5 font-mono">
               Email Address
             </label>
             <input
@@ -224,12 +224,12 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess }) => {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-[#F7F7F7] border border-slate-200 focus:border-[#34C759] focus:bg-white px-4 py-3 rounded-xl text-xs font-semibold text-black outline-none transition-all"
+              className="w-full bg-[#F7F7F7] dark:bg-neutral-850 border border-slate-200 dark:border-neutral-800 focus:border-[#22C55E] dark:focus:border-[#22C55E] focus:bg-white dark:focus:bg-neutral-900 px-4 py-3 rounded-xl text-xs font-semibold text-black dark:text-white outline-none transition-all"
             />
           </div>
 
           <div>
-            <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5 font-mono">
+            <label className="block text-[10px] font-bold uppercase text-slate-400 dark:text-slate-500 mb-1.5 font-mono">
               Account Password
             </label>
             <input
@@ -238,15 +238,15 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess }) => {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-[#F7F7F7] border border-slate-200 focus:border-[#34C759] focus:bg-white px-4 py-3 rounded-xl text-xs font-semibold text-black outline-none transition-all"
+              className="w-full bg-[#F7F7F7] dark:bg-neutral-850 border border-slate-200 dark:border-neutral-800 focus:border-[#22C55E] dark:focus:border-[#22C55E] focus:bg-white dark:focus:bg-neutral-900 px-4 py-3 rounded-xl text-xs font-semibold text-black dark:text-white outline-none transition-all"
             />
           </div>
 
           {/* Remember Me & 2FA Toggles */}
           <div className="grid grid-cols-2 gap-2">
-            <div className="flex justify-between items-center bg-[#F7F7F7] p-2.5 rounded-xl border border-slate-200/50">
+            <div className="flex justify-between items-center bg-[#F7F7F7] dark:bg-neutral-850 p-2.5 rounded-xl border border-slate-200/50 dark:border-neutral-800">
               <div>
-                <span className="text-[9px] font-bold text-black block uppercase tracking-wide">
+                <span className="text-[9px] font-bold text-black dark:text-white block uppercase tracking-wide">
                   Remember Me
                 </span>
               </div>
@@ -255,16 +255,16 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess }) => {
                 type="button"
                 onClick={() => setRememberMe(!rememberMe)}
                 className={`w-8 h-5 rounded-full p-0.5 flex items-center transition-all duration-300 cursor-pointer ${
-                  rememberMe ? "bg-[#34C759] justify-end" : "bg-slate-300 justify-start"
+                  rememberMe ? "bg-[#22C55E] justify-end" : "bg-slate-300 dark:bg-neutral-700 justify-start"
                 }`}
               >
                 <div className="w-3.5 h-3.5 bg-white rounded-full shadow-sm"></div>
               </button>
             </div>
 
-            <div className="flex justify-between items-center bg-[#F7F7F7] p-2.5 rounded-xl border border-slate-200/50">
+            <div className="flex justify-between items-center bg-[#F7F7F7] dark:bg-neutral-850 p-2.5 rounded-xl border border-slate-200/50 dark:border-neutral-800">
               <div>
-                <span className="text-[9px] font-bold text-black block uppercase tracking-wide">
+                <span className="text-[9px] font-bold text-black dark:text-white block uppercase tracking-wide">
                   Require 2FA
                 </span>
               </div>
@@ -276,7 +276,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess }) => {
                   if (!use2FA) setTotpCode("123456");
                 }}
                 className={`w-8 h-5 rounded-full p-0.5 flex items-center transition-all duration-300 cursor-pointer ${
-                  use2FA ? "bg-[#34C759] justify-end" : "bg-slate-300 justify-start"
+                  use2FA ? "bg-[#22C55E] justify-end" : "bg-slate-300 dark:bg-neutral-700 justify-start"
                 }`}
               >
                 <div className="w-3.5 h-3.5 bg-white rounded-full shadow-sm"></div>
@@ -286,7 +286,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess }) => {
 
           {use2FA && (
             <div className="animate-fade-in">
-              <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5 font-mono">
+              <label className="block text-[10px] font-bold uppercase text-slate-400 dark:text-slate-500 mb-1.5 font-mono">
                 MFA Token (Enter '123456')
               </label>
               <input
@@ -296,13 +296,13 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess }) => {
                 maxLength={6}
                 value={totpCode}
                 onChange={(e) => setTotpCode(e.target.value)}
-                className="w-full bg-[#F7F7F7] border border-slate-200 focus:border-[#34C759] focus:bg-white px-4 py-3 rounded-xl text-xs font-mono font-bold text-center tracking-[0.4em] text-black outline-none transition-all"
+                className="w-full bg-[#F7F7F7] dark:bg-neutral-850 border border-slate-200 dark:border-neutral-800 focus:border-[#22C55E] dark:focus:border-[#22C55E] focus:bg-white dark:focus:bg-neutral-900 px-4 py-3 rounded-xl text-xs font-mono font-bold text-center tracking-[0.4em] text-black dark:text-white outline-none transition-all"
               />
             </div>
           )}
 
           {error && (
-            <div className="bg-rose-50 text-rose-600 p-3 rounded-xl border border-rose-100 flex gap-2 items-start text-[11px] font-medium leading-relaxed">
+            <div className="bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 p-3 rounded-xl border border-rose-100 dark:border-rose-950/30 flex gap-2 items-start text-[11px] font-medium leading-relaxed">
               <ShieldAlert className="h-4 w-4 stroke-[2] shrink-0 mt-0.5" />
               <span>{error}</span>
             </div>
@@ -313,11 +313,11 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess }) => {
               id="btn-forgot-password"
               type="button"
               onClick={() => alert("Credentials reset instructions have been dispatched securely to the administrator inbox.")}
-              className="text-slate-400 hover:text-[#34C759] uppercase tracking-wider font-bold cursor-pointer transition-all"
+              className="text-slate-400 dark:text-slate-500 hover:text-[#22C55E] dark:hover:text-[#22C55E] uppercase tracking-wider font-bold cursor-pointer transition-all"
             >
               Reset Password?
             </button>
-            <span className="text-slate-400 text-[9px]">v4.2.0 Active</span>
+            <span className="text-slate-400 dark:text-slate-500 text-[9px]">v4.2.0 Active</span>
           </div>
 
           <div className="space-y-2 pt-2">
@@ -325,7 +325,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess }) => {
               id="btn-login-submit"
               type="submit"
               disabled={loading || biometricScanning}
-              className="w-full py-3 bg-black hover:bg-neutral-800 text-white font-bold text-xs rounded-xl uppercase tracking-widest cursor-pointer transition-all flex justify-center items-center gap-2 shadow-lg disabled:opacity-50"
+              className="w-full py-3 bg-black dark:bg-[#22C55E] hover:bg-neutral-800 dark:hover:bg-[#1fae53] text-white dark:text-neutral-950 font-bold text-xs rounded-xl uppercase tracking-widest cursor-pointer transition-all flex justify-center items-center gap-2 shadow-lg disabled:opacity-50"
             >
               {loading ? (
                 <span className="inline-block h-3.5 w-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
@@ -339,10 +339,10 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess }) => {
               type="button"
               onClick={handleBiometricUnlock}
               disabled={loading || biometricScanning}
-              className="w-full py-3 bg-neutral-50 hover:bg-[#34C759]/10 text-slate-700 hover:text-[#34C759] border border-slate-200 font-bold text-[10px] rounded-xl uppercase tracking-widest cursor-pointer transition-all flex justify-center items-center gap-2 disabled:opacity-50"
+              className="w-full py-3 bg-neutral-50 dark:bg-neutral-850 hover:bg-[#22C55E]/10 text-slate-700 dark:text-slate-300 hover:text-[#22C55E] dark:hover:text-[#22C55E] border border-slate-200 dark:border-neutral-800 font-bold text-[10px] rounded-xl uppercase tracking-widest cursor-pointer transition-all flex justify-center items-center gap-2 disabled:opacity-50"
             >
               {biometricScanning ? (
-                <span className="h-3.5 w-3.5 border-2 border-[#34C759] border-t-transparent rounded-full animate-spin"></span>
+                <span className="h-3.5 w-3.5 border-2 border-[#22C55E] border-t-transparent rounded-full animate-spin"></span>
               ) : (
                 <Fingerprint className="h-4 w-4" />
               )}

@@ -75,3 +75,31 @@ body {
   animation: pulseScale 3s infinite ease-in-out;
 }
 
+/* Enforce rigid native mobile viewport behavior on the parent window */
+html, body {
+  overflow: hidden;
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  touch-action: manipulation;
+  overscroll-behavior: none;
+}
+
+#root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Prevent horizontal scrollbars globally */
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+*::-webkit-scrollbar {
+  display: none;
+}
+

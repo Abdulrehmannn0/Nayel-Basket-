@@ -417,8 +417,8 @@ Please make sure your API key is correctly configured and click the **Retry** bu
           >
             <QrCode className="h-4 w-4 text-emerald-400 group-hover:scale-110 transition-transform" />
             <div>
-              <p className="font-semibold text-slate-200">Product Tag Lookup</p>
-              <p className="text-[10px] text-slate-400 mt-0.5">Simulate scanning retail physical SKUs</p>
+              <p className="font-semibold text-neutral-800 dark:text-slate-200">Product Tag Lookup</p>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">Simulate scanning retail physical SKUs</p>
             </div>
           </button>
         </div>

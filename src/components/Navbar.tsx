@@ -105,7 +105,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeSection, setActiveSection 
   return (
     <>
       {/* Top Mobile-Native Bar with Premium Glass Effect */}
-      <nav className="sticky top-0 z-40 bg-white/85 dark:bg-[#111111]/85 backdrop-blur-xl border-b border-slate-200/55 dark:border-neutral-800/55 text-[#111111] dark:text-[#FFFFFF] transition-colors duration-300 px-4 h-16 flex items-center justify-between relative">
+      <nav className="sticky top-0 z-50 bg-white/90 dark:bg-[#111111]/90 backdrop-blur-xl border-b border-slate-200/50 dark:border-neutral-800/50 text-[#111111] dark:text-[#FFFFFF] transition-colors duration-300 px-4 h-[60px] pt-[env(safe-area-inset-top)] flex items-center justify-between w-full flex-shrink-0">
         
         {/* Left Action: Hamburger Drawer Trigger */}
         <button
