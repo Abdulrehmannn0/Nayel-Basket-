@@ -1,9 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { AppProvider, useApp } from "./context/AppContext";
-import { AdminLogin } from "./components/AdminLogin";
-import { AdminDashboard } from "./components/AdminDashboard";
-import { CustomerShop } from "./components/CustomerShop";
-import { SellerPanel } from "./components/SellerPanel";
 import { Navbar } from "./components/Navbar";
 import { motion, AnimatePresence } from "motion/react";
 import { 
@@ -17,10 +13,26 @@ import {
   ClipboardList
 } from "lucide-react";
 
+// Lazy-loaded components for lightning-fast initial load times
+const AdminLogin = lazy(() => import("./components/AdminLogin").then(m => ({ default: m.AdminLogin })));
+const AdminDashboard = lazy(() => import("./components/AdminDashboard").then(m => ({ default: m.AdminDashboard })));
+const CustomerShop = lazy(() => import("./components/CustomerShop").then(m => ({ default: m.CustomerShop })));
+const SellerPanel = lazy(() => import("./components/SellerPanel").then(m => ({ default: m.SellerPanel })));
+
 interface AdminUser {
   email: string;
   role: "super_admin" | "admin" | "manager" | "staff" | "customer";
 }
+
+// Premium visual preloader fallback
+const ShimmerLoader = () => (
+  <div className="flex flex-col items-center justify-center p-12 space-y-4 w-full h-full min-h-[400px]">
+    <div className="w-16 h-16 border-2 border-[#22C55E]/10 border-t-[#22C55E] rounded-full animate-spin"></div>
+    <span className="text-[10px] font-mono tracking-[0.2em] text-[#22C55E] animate-pulse">
+      Curating Space Configuration...
+    </span>
+  </div>
+);
 
 // Simple reactive router hook for zero-dependency client-side routing
 function useRoute() {
@@ -129,13 +141,15 @@ function MainAppOrchestration() {
           <span>BACK TO SHOP</span>
         </button>
 
-        {user ? (
-          <AdminDashboard adminUser={user} onLogout={handleLogout} />
-        ) : (
-          <div className="pt-16">
-            <AdminLogin onLoginSuccess={handleLoginSuccess} />
-          </div>
-        )}
+        <Suspense fallback={<ShimmerLoader />}>
+          {user ? (
+            <AdminDashboard adminUser={user} onLogout={handleLogout} />
+          ) : (
+            <div className="pt-16">
+              <AdminLogin onLoginSuccess={handleLoginSuccess} />
+            </div>
+          )}
+        </Suspense>
       </div>
     );
   }
@@ -144,7 +158,9 @@ function MainAppOrchestration() {
   if (showSellerPanel) {
     return (
       <div className="min-h-screen bg-[#FDFDFD] text-black font-sans antialiased">
-        <SellerPanel onBack={() => setShowSellerPanel(false)} />
+        <Suspense fallback={<ShimmerLoader />}>
+          <SellerPanel onBack={() => setShowSellerPanel(false)} />
+        </Suspense>
       </div>
     );
   }
@@ -170,7 +186,7 @@ function MainAppOrchestration() {
               {/* Official Nayel Basket logo with high-fidelity vector */}
               <div className="relative w-36 h-36 md:w-40 md:h-40 rounded-3xl overflow-hidden shadow-2xl flex items-center justify-center p-2 bg-neutral-950 dark:bg-black border border-neutral-800">
                 <img 
-                  src="/icon.svg" 
+                  src="/icon-512.jpg" 
                   alt="Nayel Basket" 
                   className="w-full h-full object-contain"
                   referrerPolicy="no-referrer"
@@ -178,7 +194,7 @@ function MainAppOrchestration() {
               </div>
               
               <div className="mt-8 space-y-2">
-                <h1 className="text-3xl md:text-4xl font-extrabold tracking-[0.25em] text-neutral-900 dark:text-[#D4AF37] uppercase font-sans">
+                <h1 className="text-3xl md:text-4xl font-extrabold tracking-[0.25em] text-neutral-900 dark:text-[#22C55E] uppercase font-sans">
                   Nayel Basket
                 </h1>
                 <p className="text-xs md:text-sm font-semibold text-slate-500 dark:text-neutral-400 uppercase tracking-[0.2em] font-mono">
@@ -192,7 +208,7 @@ function MainAppOrchestration() {
                   initial={{ x: "-100%" }}
                   animate={{ x: "100%" }}
                   transition={{ repeat: Infinity, duration: 1.8, ease: "easeInOut" }}
-                  className="absolute inset-y-0 left-0 bg-[#D4AF37] w-full rounded-full"
+                  className="absolute inset-y-0 left-0 bg-[#22C55E] w-full rounded-full"
                 />
               </div>
             </motion.div>
@@ -212,26 +228,33 @@ function MainAppOrchestration() {
 
           {/* Main Scrollable Content Area */}
           <main className="flex-1 overflow-y-auto scrollbar-hide pb-28">
-            <CustomerShop 
-              activeSection={activeSection}
-              setActiveSection={setActiveSection}
-              onSelectSeller={() => setShowSellerPanel(true)}
-              onSelectAdmin={() => navigate("/admin")}
-            />
+            <Suspense fallback={<ShimmerLoader />}>
+              <CustomerShop 
+                activeSection={activeSection}
+                setActiveSection={setActiveSection}
+                onSelectSeller={() => setShowSellerPanel(true)}
+                onSelectAdmin={() => navigate("/admin")}
+              />
+            </Suspense>
           </main>
 
-          {/* Mobile-Native Bottom Floating Navigation Bar */}
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50 w-[94%] bg-white/95 dark:bg-[#1A1A1A]/95 backdrop-blur-xl border border-slate-100/85 dark:border-[#222222] rounded-3xl py-3 px-4 shadow-2xl flex items-center justify-between transition-all duration-300">
+          {/* Mobile-Native Bottom Floating Navigation Bar with Premium iOS/Android Safe Area Styling */}
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50 w-[94%] bg-white/95 dark:bg-[#1A1A1A]/95 backdrop-blur-xl border border-slate-200/40 dark:border-neutral-850 rounded-3xl py-3 px-4 shadow-[0_12px_40px_rgba(0,0,0,0.12)] dark:shadow-[0_16px_50px_rgba(0,0,0,0.5)] flex items-center justify-between transition-all duration-300 pb-[calc(12px+env(safe-area-inset-bottom))]">
             <button
               id="mobile-nav-home"
               onClick={() => {
                 setActiveSection("home");
                 if (navigator.vibrate) navigator.vibrate(10);
               }}
-              className={`flex flex-col items-center gap-1 cursor-pointer transition-all ${activeSection === "home" ? "text-[#D4AF37] scale-105" : "text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"}`}
+              className="flex flex-col items-center gap-1 cursor-pointer transition-all relative flex-1"
             >
-              <HomeIcon className="h-5 w-5 stroke-[2]" />
-              <span className="text-[8px] font-bold uppercase tracking-wider font-sans">Home</span>
+              <div className={`transition-all duration-300 flex flex-col items-center ${activeSection === "home" ? "text-[#22C55E] scale-110" : "text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"}`}>
+                <HomeIcon className="h-5 w-5 stroke-[2.2]" />
+                <span className="text-[8.5px] font-bold uppercase tracking-wider font-sans mt-0.5">Home</span>
+              </div>
+              {activeSection === "home" && (
+                <span className="absolute -bottom-1 w-1.5 h-1.5 rounded-full bg-[#22C55E] animate-fade-in" />
+              )}
             </button>
 
             <button
@@ -240,10 +263,15 @@ function MainAppOrchestration() {
                 setActiveSection("categories");
                 if (navigator.vibrate) navigator.vibrate(10);
               }}
-              className={`flex flex-col items-center gap-1 cursor-pointer transition-all ${activeSection === "categories" ? "text-[#D4AF37] scale-105" : "text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"}`}
+              className="flex flex-col items-center gap-1 cursor-pointer transition-all relative flex-1"
             >
-              <Layers className="h-5 w-5 stroke-[2]" />
-              <span className="text-[8px] font-bold uppercase tracking-wider font-sans">Catalog</span>
+              <div className={`transition-all duration-300 flex flex-col items-center ${activeSection === "categories" ? "text-[#22C55E] scale-110" : "text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"}`}>
+                <Layers className="h-5 w-5 stroke-[2.2]" />
+                <span className="text-[8.5px] font-bold uppercase tracking-wider font-sans mt-0.5">Catalog</span>
+              </div>
+              {activeSection === "categories" && (
+                <span className="absolute -bottom-1 w-1.5 h-1.5 rounded-full bg-[#22C55E] animate-fade-in" />
+              )}
             </button>
 
             <button
@@ -252,16 +280,21 @@ function MainAppOrchestration() {
                 setActiveSection("ai");
                 if (navigator.vibrate) navigator.vibrate(10);
               }}
-              className={`flex flex-col items-center gap-1 cursor-pointer transition-all relative ${activeSection === "ai" ? "text-[#D4AF37] scale-105" : "text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"}`}
+              className="flex flex-col items-center gap-1 cursor-pointer transition-all relative flex-1"
             >
-              <div className="relative">
-                <Sparkles className="h-5 w-5 stroke-[2] animate-pulse text-[#D4AF37] dark:text-[#D4AF37]" />
-                <span className="absolute -top-1 -right-1 flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#D4AF37] opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-[#D4AF37]"></span>
-                </span>
+              <div className={`transition-all duration-300 flex flex-col items-center ${activeSection === "ai" ? "text-[#22C55E] scale-110" : "text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"}`}>
+                <div className="relative">
+                  <Sparkles className="h-5 w-5 stroke-[2.2] text-[#22C55E] dark:text-[#22C55E]" />
+                  <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#22C55E] opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-[#22C55E]"></span>
+                  </span>
+                </div>
+                <span className="text-[8.5px] font-bold uppercase tracking-wider font-sans mt-0.5">AI Styling</span>
               </div>
-              <span className="text-[8px] font-bold uppercase tracking-wider font-sans">AI Styling</span>
+              {activeSection === "ai" && (
+                <span className="absolute -bottom-1 w-1.5 h-1.5 rounded-full bg-[#22C55E] animate-fade-in" />
+              )}
             </button>
 
             <button
@@ -270,15 +303,22 @@ function MainAppOrchestration() {
                 setActiveSection("wishlist");
                 if (navigator.vibrate) navigator.vibrate(10);
               }}
-              className={`flex flex-col items-center gap-1 cursor-pointer transition-all relative ${activeSection === "wishlist" ? "text-[#D4AF37] scale-105" : "text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"}`}
+              className="flex flex-col items-center gap-1 cursor-pointer transition-all relative flex-1"
             >
-              <Heart className="h-5 w-5 stroke-[2]" />
-              {wishlistCount > 0 && (
-                <span className="absolute -top-1 -right-2 bg-rose-500 text-white text-[8px] font-black px-1.5 py-0.2 rounded-full scale-90">
-                  {wishlistCount}
-                </span>
+              <div className={`transition-all duration-300 flex flex-col items-center ${activeSection === "wishlist" ? "text-[#22C55E] scale-110" : "text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"}`}>
+                <div className="relative">
+                  <Heart className="h-5 w-5 stroke-[2.2]" />
+                  {wishlistCount > 0 && (
+                    <span className="absolute -top-1 -right-2 bg-rose-500 text-white text-[8px] font-black px-1.5 py-0.2 rounded-full scale-90">
+                      {wishlistCount}
+                    </span>
+                  )}
+                </div>
+                <span className="text-[8.5px] font-bold uppercase tracking-wider font-sans mt-0.5">Curated</span>
+              </div>
+              {activeSection === "wishlist" && (
+                <span className="absolute -bottom-1 w-1.5 h-1.5 rounded-full bg-[#22C55E] animate-fade-in" />
               )}
-              <span className="text-[8px] font-bold uppercase tracking-wider font-sans">Curated</span>
             </button>
 
             <button
@@ -287,15 +327,22 @@ function MainAppOrchestration() {
                 setActiveSection("cart");
                 if (navigator.vibrate) navigator.vibrate(10);
               }}
-              className={`flex flex-col items-center gap-1 cursor-pointer transition-all relative ${activeSection === "cart" ? "text-[#D4AF37] scale-105" : "text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"}`}
+              className="flex flex-col items-center gap-1 cursor-pointer transition-all relative flex-1"
             >
-              <ShoppingBag className="h-5 w-5 stroke-[2]" />
-              {cartCount > 0 && (
-                <span className="absolute -top-1 -right-2 bg-[#D4AF37] text-neutral-950 text-[8px] font-black px-1.5 py-0.2 rounded-full scale-90 animate-bounce">
-                  {cartCount}
-                </span>
+              <div className={`transition-all duration-300 flex flex-col items-center ${activeSection === "cart" ? "text-[#22C55E] scale-110" : "text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"}`}>
+                <div className="relative">
+                  <ShoppingBag className="h-5 w-5 stroke-[2.2]" />
+                  {cartCount > 0 && (
+                    <span className="absolute -top-1 -right-2 bg-[#22C55E] text-neutral-950 text-[8px] font-black px-1.5 py-0.2 rounded-full scale-90">
+                      {cartCount}
+                    </span>
+                  )}
+                </div>
+                <span className="text-[8.5px] font-bold uppercase tracking-wider font-sans mt-0.5">Bag</span>
+              </div>
+              {activeSection === "cart" && (
+                <span className="absolute -bottom-1 w-1.5 h-1.5 rounded-full bg-[#22C55E] animate-fade-in" />
               )}
-              <span className="text-[8px] font-bold uppercase tracking-wider font-sans">Bag</span>
             </button>
 
             <button
@@ -304,10 +351,15 @@ function MainAppOrchestration() {
                 setActiveSection("profile");
                 if (navigator.vibrate) navigator.vibrate(10);
               }}
-              className={`flex flex-col items-center gap-1 cursor-pointer transition-all ${activeSection === "profile" ? "text-[#D4AF37] scale-105" : "text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"}`}
+              className="flex flex-col items-center gap-1 cursor-pointer transition-all relative flex-1"
             >
-              <User className="h-5 w-5 stroke-[2]" />
-              <span className="text-[8px] font-bold uppercase tracking-wider font-sans">Profile</span>
+              <div className={`transition-all duration-300 flex flex-col items-center ${activeSection === "profile" ? "text-[#22C55E] scale-110" : "text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"}`}>
+                <User className="h-5 w-5 stroke-[2.2]" />
+                <span className="text-[8.5px] font-bold uppercase tracking-wider font-sans mt-0.5">Profile</span>
+              </div>
+              {activeSection === "profile" && (
+                <span className="absolute -bottom-1 w-1.5 h-1.5 rounded-full bg-[#22C55E] animate-fade-in" />
+              )}
             </button>
           </div>
 

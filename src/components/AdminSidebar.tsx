@@ -152,7 +152,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
         <div className="flex items-center justify-between p-4 border-b border-slate-50">
           <div className="flex items-center gap-2.5">
             <div className="bg-neutral-950 w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center p-0.5 shadow-sm border border-neutral-800 shrink-0">
-              <img src="/icon.svg" alt="Nayel Basket" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+              <img src="/icon-512.jpg" alt="Nayel Basket" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
             </div>
             <div>
               <span className="font-sans font-black text-black text-[13px] tracking-tight uppercase block leading-none">

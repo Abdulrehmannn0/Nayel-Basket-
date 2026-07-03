@@ -35,8 +35,8 @@ if (messaging) {
     const notificationTitle = payload.notification?.title || payload.data?.title || "Nayel Basket Update";
     const notificationOptions = {
       body: payload.notification?.body || payload.data?.body || "New catalog item or offer is live!",
-      icon: payload.notification?.icon || payload.data?.icon || "/assets/logo.png",
-      badge: "/assets/logo.png",
+      icon: payload.notification?.icon || payload.data?.icon || "/icon-512.jpg",
+      badge: "/icon-512.jpg",
       data: payload.data || {},
       actions: [
         { action: "view_shop", title: "Open Shop" },

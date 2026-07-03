@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useApp } from "../context/AppContext";
 import { Product, CartItem, Address, Order } from "../types";
 import { ProductCard } from "./ProductCard";
@@ -83,14 +83,35 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
     theme,
     toggleTheme,
     themePreference,
-    setThemePreference
+    setThemePreference,
+    searchQuery,
+    setSearchQuery
   } = useApp();
 
   // Core States
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [activeProfileTab, setActiveProfileTab] = useState<"dashboard" | "orders" | "addresses" | "coupons" | "security" | "telemetry" | "referral">("dashboard");
+
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [recentSearches, setRecentSearches] = useState<string[]>(() => {
+    const saved = localStorage.getItem("nb_recent_searches");
+    return saved ? JSON.parse(saved) : ["Oak Table", "Ceramic Trio Vase", "Pendant Light", "Scented Candle"];
+  });
+
+  useEffect(() => {
+    localStorage.setItem("nb_recent_searches", JSON.stringify(recentSearches));
+  }, [recentSearches]);
+
+  const trendingSearches = ["Solid European Oak", "Ceramic Trio Vase", "Celeste Pendant", "Amber Clay Pots", "Edison Bulb"];
+
+  const addToRecentSearches = (term: string) => {
+    if (!term.trim()) return;
+    setRecentSearches((prev) => {
+      const filtered = prev.filter((t) => t.toLowerCase() !== term.trim().toLowerCase());
+      return [term.trim(), ...filtered].slice(0, 5);
+    });
+  };
 
   // Payment gateway simulation states
   const [paymentStep, setPaymentStep] = useState<"idle" | "gateway_select" | "processing" | "success" | "failed">("idle");
@@ -146,6 +167,20 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
     return () => {
       window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
       window.removeEventListener("appinstalled", handleAppInstalled);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleProfileTabChange = () => {
+      const savedTab = localStorage.getItem("nb_active_profile_tab");
+      if (savedTab) {
+        setActiveProfileTab(savedTab as any);
+      }
+    };
+
+    window.addEventListener("nb-profile-tab-changed", handleProfileTabChange);
+    return () => {
+      window.removeEventListener("nb-profile-tab-changed", handleProfileTabChange);
     };
   }, []);
 
@@ -412,32 +447,40 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
     setShowShopLookDrawer(true);
   };
 
-  // Filtered Products for Catalog
-  const filteredProducts = products.filter((p) => {
-    const matchesCategory = selectedCategory === "All" || p.category.toLowerCase() === selectedCategory.toLowerCase();
-    const matchesSearch = !searchQuery.trim() || 
-      p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      p.brand.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.category.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
-  });
-
-  // Hot Curated Products for Home View
-  const homeTrendingProducts = products.slice(0, 4);
-
-  // Suggested search matches for instant overlay typing
-  const suggestedSearchMatches = searchQuery.trim() 
-    ? products.filter(p => 
-        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+  // Filtered Products for Catalog (Memoized)
+  const filteredProducts = useMemo(() => {
+    return products.filter((p) => {
+      const matchesCategory = selectedCategory === "All" || p.category.toLowerCase() === selectedCategory.toLowerCase();
+      const matchesSearch = !searchQuery.trim() || 
+        p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
         p.brand.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.category.toLowerCase().includes(searchQuery.toLowerCase())
-      ).slice(0, 5)
-    : [];
+        p.category.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesCategory && matchesSearch;
+    });
+  }, [products, selectedCategory, searchQuery]);
 
-  // Floating suggestion category matches
-  const suggestedCategoryMatches = searchQuery.trim()
-    ? categoriesList.filter(c => c.toLowerCase().includes(searchQuery.toLowerCase()) && c !== "All")
-    : [];
+  // Hot Curated Products for Home View (Memoized)
+  const homeTrendingProducts = useMemo(() => {
+    return products.slice(0, 4);
+  }, [products]);
+
+  // Suggested search matches for instant overlay typing (Memoized)
+  const suggestedSearchMatches = useMemo(() => {
+    return searchQuery.trim() 
+      ? products.filter(p => 
+          p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          p.brand.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          p.category.toLowerCase().includes(searchQuery.toLowerCase())
+        ).slice(0, 5)
+      : [];
+  }, [products, searchQuery]);
+
+  // Floating suggestion category matches (Memoized)
+  const suggestedCategoryMatches = useMemo(() => {
+    return searchQuery.trim()
+      ? categoriesList.filter(c => c.toLowerCase().includes(searchQuery.toLowerCase()) && c !== "All")
+      : [];
+  }, [categoriesList, searchQuery]);
 
   if (selectedProduct) {
     return (
@@ -457,9 +500,16 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
         <div className="animate-fade-in space-y-8">
           
           {/* SEARCH BAR AREA */}
+          {isSearchFocused && (
+            <div 
+              className="fixed inset-0 bg-slate-950/20 dark:bg-black/50 backdrop-blur-xs z-30 transition-opacity duration-300"
+              onClick={() => setIsSearchFocused(false)}
+            />
+          )}
+
           <div className="px-4 pt-5 relative z-40">
             <div className="relative">
-              {/* Premium rounded search bar exactly like reference */}
+              {/* Premium rounded search bar */}
               <div className="flex items-center w-full h-[52px] rounded-[26px] bg-[#F5F5F5] dark:bg-[#1A1A1A] border border-transparent dark:border-neutral-800 shadow-sm transition-all focus-within:shadow-md pr-4 pl-4.5">
                 <Search className="h-5 w-5 text-slate-400 mr-2.5 flex-shrink-0" />
                 <input
@@ -468,7 +518,14 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                   placeholder="Search furniture, decor, lighting..."
                   className="flex-1 bg-transparent text-sm text-neutral-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none h-full font-sans"
                   value={searchQuery}
+                  onFocus={() => setIsSearchFocused(true)}
                   onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      addToRecentSearches(searchQuery);
+                      setIsSearchFocused(false);
+                    }
+                  }}
                 />
                 
                 {searchQuery && (
@@ -485,15 +542,16 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                   id="btn-voice-search-trigger"
                   onClick={() => {
                     setIsVoiceSearching(true);
-                    addNotification("🎤 Calibration Active", "Listening for premium conceptual cordinates...", "system");
+                    addNotification("🎤 Calibration Active", "Listening for premium conceptual coordinates...", "system");
                     setTimeout(() => {
                       setIsVoiceSearching(false);
                       const samples = ["Minimalist Ceramic Vase", "European Oak Armchair", "Amber Scented Candle"];
                       const chosen = samples[Math.floor(Math.random() * samples.length)];
                       setSearchQuery(chosen);
+                      addToRecentSearches(chosen);
                     }, 2200);
                   }}
-                  className="p-1.5 text-slate-400 hover:text-[#D4AF37] transition cursor-pointer mr-1"
+                  className="p-1.5 text-slate-400 hover:text-[#22C55E] transition cursor-pointer mr-1"
                   title="Voice Search"
                 >
                   <Mic className="h-5 w-5 stroke-[1.8]" />
@@ -503,16 +561,80 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                 <button
                   id="btn-image-search-trigger"
                   onClick={() => setShowImageSearchDrawer(true)}
-                  className="p-1.5 text-slate-400 hover:text-[#D4AF37] transition cursor-pointer"
+                  className="p-1.5 text-slate-400 hover:text-[#22C55E] transition cursor-pointer"
                   title="Image Search"
                 >
                   <Camera className="h-5 w-5 stroke-[1.8]" />
                 </button>
               </div>
 
+              {/* RECENT & TRENDING SEARCHES PANEL (When empty & focused) */}
+              {isSearchFocused && !searchQuery.trim() && (
+                <div className="absolute left-0 right-0 mt-2 bg-white dark:bg-[#1A1A1A] border border-slate-100 dark:border-neutral-800 rounded-3xl shadow-[0_12px_40px_rgba(0,0,0,0.08)] dark:shadow-[0_16px_50px_rgba(0,0,0,0.45)] z-50 p-5 space-y-5 animate-fade-in text-black dark:text-white">
+                  {recentSearches.length > 0 && (
+                    <div className="space-y-2.5">
+                      <div className="flex justify-between items-center">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Recent Searches</span>
+                        <button 
+                          onClick={() => setRecentSearches([])}
+                          className="text-[10px] font-bold text-rose-500 hover:underline cursor-pointer"
+                        >
+                          Clear All
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {recentSearches.map((term, i) => (
+                          <div 
+                            key={i}
+                            className="flex items-center gap-1.5 bg-[#F5F5F5] dark:bg-neutral-800 text-xs font-medium px-3 py-1.5 rounded-full hover:bg-slate-200 dark:hover:bg-neutral-700 transition"
+                          >
+                            <span 
+                              onClick={() => {
+                                setSearchQuery(term);
+                                addToRecentSearches(term);
+                                setIsSearchFocused(false);
+                              }}
+                              className="cursor-pointer"
+                            >
+                              {term}
+                            </span>
+                            <button 
+                              onClick={() => setRecentSearches((prev) => prev.filter((t) => t !== term))}
+                              className="text-slate-400 hover:text-black dark:hover:text-white text-[10px] pl-1 font-bold"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="space-y-2.5">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 block">Trending Searches</span>
+                    <div className="flex flex-wrap gap-2">
+                      {trendingSearches.map((term, i) => (
+                        <button
+                          key={i}
+                          onClick={() => {
+                            setSearchQuery(term);
+                            addToRecentSearches(term);
+                            setIsSearchFocused(false);
+                          }}
+                          className="flex items-center gap-1.5 bg-[#22C55E]/5 text-[#22C55E] text-xs font-semibold px-3.5 py-1.5 rounded-full hover:bg-[#22C55E]/10 transition cursor-pointer"
+                        >
+                          <Search className="h-3 w-3 stroke-[2]" />
+                          {term}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* FLOATING DROPDOWN SUGGESTIONS (Only when typing) */}
               {searchQuery.trim() && (
-                <div className="absolute left-0 right-0 mt-2 bg-white dark:bg-[#1C1C1C] border border-slate-100 dark:border-neutral-800 rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.08)] dark:shadow-[0_16px_50px_rgba(0,0,0,0.45)] z-50 max-h-[360px] overflow-y-auto divide-y divide-slate-50 dark:divide-neutral-850 animate-fade-in">
+                <div className="absolute left-0 right-0 mt-2 bg-white dark:bg-[#1C1C1C] border border-slate-100 dark:border-neutral-800 rounded-3xl shadow-[0_12px_40px_rgba(0,0,0,0.08)] dark:shadow-[0_16px_50px_rgba(0,0,0,0.45)] z-50 max-h-[360px] overflow-y-auto divide-y divide-slate-50 dark:divide-neutral-850 animate-fade-in">
                   {/* Category matches */}
                   {suggestedCategoryMatches.map((cat) => (
                     <div
@@ -520,12 +642,14 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                       onClick={() => {
                         setSelectedCategory(cat);
                         setActiveSection("categories");
+                        addToRecentSearches(`Category: ${cat}`);
                         setSearchQuery("");
+                        setIsSearchFocused(false);
                       }}
                       className="p-3.5 text-xs font-semibold text-neutral-800 dark:text-neutral-200 hover:bg-slate-50 dark:hover:bg-neutral-850 cursor-pointer flex justify-between items-center transition"
                     >
                       <span className="flex items-center gap-2">
-                        <span className="text-[#D4AF37]">📁</span>
+                        <span className="text-[#22C55E]">📁</span>
                         <span>Shop Category: <strong className="text-neutral-950 dark:text-white">{cat}</strong></span>
                       </span>
                       <ChevronRight className="h-4 w-4 text-slate-400" />
@@ -539,7 +663,9 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                         key={prod.id}
                         onClick={() => {
                           handleProductSelect(prod);
+                          addToRecentSearches(prod.name);
                           setSearchQuery("");
+                          setIsSearchFocused(false);
                         }}
                         className="p-3.5 hover:bg-slate-50 dark:hover:bg-neutral-850 cursor-pointer flex gap-3.5 items-center transition-colors"
                       >
@@ -555,7 +681,7 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                         </div>
                         <div className="text-right">
                           <span className="text-xs font-bold text-neutral-900 dark:text-white">${prod.price}</span>
-                          <span className="text-[8px] text-[#D4AF37] block font-semibold mt-0.5 uppercase tracking-wider">Inspect</span>
+                          <span className="text-[8px] text-[#22C55E] block font-semibold mt-0.5 uppercase tracking-wider">Inspect</span>
                         </div>
                       </div>
                     ))
@@ -572,12 +698,12 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
           {/* VOICE RECOGNITION WAVE ANIMATION */}
           {isVoiceSearching && (
             <div className="mx-4 bg-neutral-950 text-white rounded-2xl p-5 border border-neutral-800 text-center space-y-3 shadow-lg">
-              <span className="text-[9px] font-mono text-[#D4AF37] uppercase tracking-widest font-black block">Voice Decoder Active</span>
+              <span className="text-[9px] font-mono text-[#22C55E] uppercase tracking-widest font-black block">Voice Decoder Active</span>
               <div className="flex justify-center items-center gap-1.5 py-1.5">
-                <span className="w-1 bg-[#D4AF37] h-6 rounded-full animate-pulse"></span>
-                <span className="w-1 bg-[#D4AF37] h-9 rounded-full animate-pulse delay-75"></span>
-                <span className="w-1 bg-[#D4AF37] h-11 rounded-full animate-pulse delay-150"></span>
-                <span className="w-1 bg-[#D4AF37] h-7 rounded-full animate-pulse delay-75"></span>
+                <span className="w-1 bg-[#22C55E] h-6 rounded-full animate-pulse"></span>
+                <span className="w-1 bg-[#22C55E] h-9 rounded-full animate-pulse delay-75"></span>
+                <span className="w-1 bg-[#22C55E] h-11 rounded-full animate-pulse delay-150"></span>
+                <span className="w-1 bg-[#22C55E] h-7 rounded-full animate-pulse delay-75"></span>
               </div>
               <p className="text-xs text-slate-300 font-light italic">"Listening... speak now..."</p>
             </div>
@@ -587,7 +713,7 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
           {showImageSearchDrawer && (
             <div className="mx-4 bg-white dark:bg-[#1A1A1A] border border-slate-100 dark:border-neutral-800 rounded-2xl p-4 shadow-xl space-y-3">
               <div className="flex justify-between items-center pb-2 border-b border-slate-50 dark:border-neutral-850">
-                <span className="text-[9px] font-bold text-[#D4AF37] tracking-wider uppercase font-sans">Visual Mood Analyzer</span>
+                <span className="text-[9px] font-bold text-[#22C55E] tracking-wider uppercase font-sans">Visual Mood Analyzer</span>
                 <button onClick={() => setShowImageSearchDrawer(false)} className="text-slate-400 hover:text-slate-600">✕</button>
               </div>
               <div className="grid grid-cols-3 gap-2">
@@ -635,8 +761,8 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
               }}
               className="relative overflow-hidden group h-[54px] rounded-2xl bg-black dark:bg-[#1C1C1C] text-white flex items-center justify-center gap-2 cursor-pointer transition hover:bg-neutral-900 active:scale-95 shadow-sm border border-neutral-800/20"
             >
-              <div className="absolute -top-6 -right-6 w-12 h-12 bg-[#D4AF37] rounded-full filter blur-xl opacity-20 group-hover:opacity-40 transition-all duration-700"></div>
-              <Sparkles className="h-4 w-4 text-[#D4AF37] animate-pulse" />
+              <div className="absolute -top-6 -right-6 w-12 h-12 bg-[#22C55E] rounded-full filter blur-xl opacity-20 group-hover:opacity-40 transition-all duration-700"></div>
+              <Sparkles className="h-4 w-4 text-[#22C55E] animate-pulse" />
               <span className="text-xs font-bold uppercase tracking-wider font-sans text-neutral-100 group-hover:text-white transition">
                 AI Assistant
               </span>
@@ -651,7 +777,7 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
               }}
               className="h-[54px] rounded-2xl bg-white dark:bg-[#1A1A1A] text-neutral-900 dark:text-white flex items-center justify-center gap-2 cursor-pointer transition border border-neutral-100 dark:border-neutral-800/80 hover:bg-slate-50 dark:hover:bg-neutral-850 active:scale-95 shadow-sm"
             >
-              <Compass className="h-4 w-4 text-[#D4AF37]" />
+              <Compass className="h-4 w-4 text-[#22C55E]" />
               <span className="text-xs font-bold uppercase tracking-wider font-sans">
                 Decor Ideas
               </span>
@@ -674,13 +800,12 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                     muted={isVideoMuted}
                     loop
                     playsInline
-                    style={{ height: "225px" }}
                     className="w-full h-full object-cover filter brightness-[0.7]"
                   />
                   
                   {/* Luxury Typography Overlay */}
                   <div className="absolute inset-x-6 bottom-6 flex flex-col items-start text-white space-y-1 sm:space-y-2">
-                    <span className="text-[9px] font-bold text-[#D4AF37] tracking-[0.25em] uppercase font-mono">
+                    <span className="text-[9px] font-bold text-[#22C55E] tracking-[0.25em] uppercase font-mono">
                       {v.title}
                     </span>
                     <h2 className="text-xl sm:text-2xl font-black tracking-tight uppercase leading-none">
@@ -694,7 +819,7 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                         setActiveSection("categories");
                         if (navigator.vibrate) navigator.vibrate(10);
                       }}
-                      className="mt-1.5 px-4.5 py-2 bg-white text-neutral-950 font-sans font-bold text-[9px] tracking-widest rounded-full uppercase hover:bg-[#D4AF37] hover:text-neutral-950 transition active:scale-95 shadow-lg flex items-center gap-1 cursor-pointer"
+                      className="mt-1.5 px-4.5 py-2 bg-white text-neutral-950 font-sans font-bold text-[9px] tracking-widest rounded-full uppercase hover:bg-[#22C55E] hover:text-neutral-950 transition active:scale-95 shadow-lg flex items-center gap-1 cursor-pointer"
                     >
                       <span>CURATE SPACES</span>
                       <ArrowRight className="h-3 w-3" />
@@ -719,7 +844,7 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                     key={idx}
                     onClick={() => setActiveVideoIndex(idx)}
                     className={`h-1.5 transition-all duration-500 rounded-full cursor-pointer ${
-                      idx === activeVideoIndex ? "w-6 bg-[#D4AF37]" : "w-1.5 bg-white/45 hover:bg-white"
+                      idx === activeVideoIndex ? "w-6 bg-[#22C55E]" : "w-1.5 bg-white/45 hover:bg-white"
                     }`}
                   />
                 ))}
@@ -733,7 +858,7 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
               <h3 className="text-xs font-black uppercase tracking-[0.15em] text-neutral-950 dark:text-white font-sans">
                 Shop Departments
               </h3>
-              <span className="text-[9px] text-[#D4AF37] font-bold tracking-wider uppercase">Swipe Left</span>
+              <span className="text-[9px] text-[#22C55E] font-bold tracking-wider uppercase">Swipe Left</span>
             </div>
 
             {/* Circular Category Avatars Row */}
@@ -750,7 +875,7 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                 >
                   <div className={`relative w-16 h-16 rounded-full overflow-hidden border-2 transition-all duration-300 ${
                     selectedCategory === cat 
-                      ? "border-[#D4AF37] ring-4 ring-[#D4AF37]/10 scale-105 shadow-md" 
+                      ? "border-[#22C55E] ring-4 ring-[#22C55E]/10 scale-105 shadow-md" 
                       : "border-slate-100 dark:border-neutral-850 hover:border-slate-400 dark:hover:border-neutral-700 hover:scale-105"
                   }`}>
                     <img 
@@ -760,7 +885,7 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                     />
                     <div className="absolute inset-0 bg-neutral-950/10 dark:bg-neutral-950/20"></div>
                   </div>
-                  <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-700 dark:text-slate-300 font-sans group-hover:text-[#D4AF37] transition">
+                  <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-700 dark:text-slate-300 font-sans group-hover:text-[#22C55E] transition">
                     {cat}
                   </span>
                 </div>
@@ -770,10 +895,10 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
 
           {/* FLASH CURATION HOUR (Limited curated items) */}
           <div className="mx-4 bg-[#FAF9F5] dark:bg-[#161616] rounded-3xl p-5 border border-[#EAE6D8]/50 dark:border-neutral-850/80 flex flex-col md:flex-row justify-between items-center gap-4 relative overflow-hidden">
-            <div className="absolute -bottom-10 -right-10 w-28 h-28 bg-[#D4AF37]/10 rounded-full filter blur-2xl"></div>
+            <div className="absolute -bottom-10 -right-10 w-28 h-28 bg-[#22C55E]/10 rounded-full filter blur-2xl"></div>
             
             <div className="space-y-1.5 text-center md:text-left">
-              <span className="text-[9px] font-black tracking-widest text-[#D4AF37] uppercase block font-mono">
+              <span className="text-[9px] font-black tracking-widest text-[#22C55E] uppercase block font-mono">
                 Flash Curation Event
               </span>
               <h4 className="text-sm font-black text-neutral-950 dark:text-white uppercase tracking-tight">
@@ -812,7 +937,7 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                   setSelectedCategory("All");
                   setActiveSection("categories");
                 }}
-                className="text-[10px] font-bold text-[#D4AF37] hover:underline uppercase cursor-pointer"
+                className="text-[10px] font-bold text-[#22C55E] hover:underline uppercase cursor-pointer"
               >
                 View all Catalog
               </button>
@@ -837,7 +962,7 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
               <span className="text-[9px] text-slate-400 uppercase tracking-widest font-mono">Stories</span>
             </div>
 
-            {/* Horizontal Reels List */}
+            {/* Horizontal Reels List with High-Performance Looping Videos */}
             <div className="flex gap-4 overflow-x-auto px-4 py-1.5 scrollbar-none snap-x">
               {inspirationVideos.map((reel) => (
                 <div
@@ -845,9 +970,14 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                   className="relative w-[180px] h-[310px] rounded-3xl overflow-hidden shadow-md flex-shrink-0 snap-center group border border-slate-100 dark:border-neutral-850/80 cursor-pointer"
                   onClick={() => handleOpenShopLook(reel.items)}
                 >
-                  <img 
-                    src={reel.posterUrl} 
-                    alt={reel.title}
+                  <video 
+                    src={reel.videoUrl} 
+                    poster={reel.posterUrl}
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    preload="none"
                     className="absolute inset-0 w-full h-full object-cover filter brightness-[0.7] group-hover:scale-105 transition duration-500" 
                   />
                   
@@ -858,13 +988,13 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
 
                   {/* Caption & Pill tag overlay */}
                   <div className="absolute inset-x-3.5 bottom-3.5 flex flex-col items-start space-y-1 text-white">
-                    <span className="bg-[#D4AF37] text-neutral-950 text-[7px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest">
+                    <span className="bg-[#22C55E] text-neutral-950 text-[7px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest">
                       {reel.category}
                     </span>
                     <h5 className="text-[11px] font-extrabold tracking-tight leading-snug line-clamp-2 uppercase">
                       {reel.title}
                     </h5>
-                    <span className="text-[8px] text-[#D4AF37] font-bold mt-1 tracking-wider uppercase block bg-black/40 backdrop-blur-sm px-2.5 py-1 rounded-lg">
+                    <span className="text-[8px] text-[#22C55E] font-bold mt-1 tracking-wider uppercase block bg-black/40 backdrop-blur-sm px-2.5 py-1 rounded-lg">
                       Shop look
                     </span>
                   </div>
@@ -885,9 +1015,40 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
               Our curators hand-select solid oak, low-fired stoneware clay pots, and custom coordinates in limited quantities from European ateliers.
             </p>
             <div className="flex justify-center gap-1.5">
-              <span className="w-1.5 h-1.5 bg-[#D4AF37] rounded-full"></span>
-              <span className="w-1.5 h-1.5 bg-[#D4AF37] rounded-full opacity-60"></span>
-              <span className="w-1.5 h-1.5 bg-[#D4AF37] rounded-full opacity-30"></span>
+              <span className="w-1.5 h-1.5 bg-[#22C55E] rounded-full"></span>
+              <span className="w-1.5 h-1.5 bg-[#22C55E] rounded-full opacity-60"></span>
+              <span className="w-1.5 h-1.5 bg-[#22C55E] rounded-full opacity-30"></span>
+            </div>
+          </div>
+
+          {/* BRAND FOOTER */}
+          <div className="mx-4 mt-8 pt-8 pb-6 border-t border-slate-100 dark:border-neutral-850 space-y-6">
+            <div className="text-center space-y-2">
+              <span className="text-[12px] font-black uppercase tracking-[0.3em] text-[#22C55E]">Nayel Basket</span>
+              <p className="text-[10px] text-slate-450 dark:text-slate-500 font-sans leading-relaxed max-w-xs mx-auto">
+                Organic woodcraft, artisanal ceramics, and architectural spatial curation.
+              </p>
+            </div>
+
+            <div className="flex justify-center items-center gap-6 text-[10px] text-slate-450 dark:text-slate-500 font-sans font-semibold tracking-wide">
+              <span className="hover:text-black dark:hover:text-white transition cursor-pointer">Shipping</span>
+              <span className="hover:text-black dark:hover:text-white transition cursor-pointer">Returns</span>
+              <span className="hover:text-black dark:hover:text-white transition cursor-pointer">Security</span>
+              <span className="hover:text-black dark:hover:text-white transition cursor-pointer">Bespoke</span>
+            </div>
+
+            {/* Micro trust badges */}
+            <div className="flex justify-center gap-4 py-1.5">
+              <div className="flex items-center gap-1 text-[9px] font-bold text-slate-400 font-mono uppercase">
+                <span className="text-[#22C55E]">✓</span> Authentic Ateliers
+              </div>
+              <div className="flex items-center gap-1 text-[9px] font-bold text-slate-400 font-mono uppercase">
+                <span className="text-[#22C55E]">✓</span> 100% Secure Checkout
+              </div>
+            </div>
+
+            <div className="text-center text-[9px] text-slate-350 dark:text-slate-600 font-sans uppercase tracking-widest pt-2">
+              © 2026 Nayel Basket. All rights reserved.
             </div>
           </div>
 
@@ -900,7 +1061,7 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
           <div className="bg-white dark:bg-[#181818] w-full max-h-[75vh] rounded-t-[2.5rem] p-6 space-y-4 overflow-y-auto animate-slide-up text-black dark:text-white">
             <div className="flex justify-between items-center border-b border-slate-100 dark:border-neutral-850 pb-3">
               <div>
-                <span className="text-[9px] font-black text-[#D4AF37] uppercase tracking-wider block font-mono">Interactive Lookbook</span>
+                <span className="text-[9px] font-black text-[#22C55E] uppercase tracking-wider block font-mono">Interactive Lookbook</span>
                 <h4 className="text-sm font-black uppercase tracking-tight">Shop products from this video</h4>
               </div>
               <button 
@@ -942,7 +1103,7 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                           addToCart(p, 1, p.sizes?.[0] || "Standard", p.colors?.[0] || "Natural");
                           addNotification("🛍️ Added to Bag", `${p.name} was added to your shopping bag.`, "system");
                         }}
-                        className="px-3 py-1.5 bg-black dark:bg-[#D4AF37] text-white dark:text-neutral-950 text-[9px] font-black tracking-widest uppercase rounded-lg shadow-sm cursor-pointer"
+                        className="px-3 py-1.5 bg-black dark:bg-[#22C55E] text-white dark:text-neutral-950 text-[9px] font-black tracking-widest uppercase rounded-lg shadow-sm cursor-pointer"
                       >
                         ADD
                       </button>
@@ -997,7 +1158,7 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                 onClick={() => setSelectedCategory(cat)}
                 className={`px-4 py-2 text-[10px] font-bold tracking-wider uppercase rounded-full transition cursor-pointer flex-shrink-0 ${
                   selectedCategory === cat
-                    ? "bg-black dark:bg-[#D4AF37] text-white dark:text-neutral-950 shadow-md"
+                    ? "bg-black dark:bg-[#22C55E] text-white dark:text-neutral-950 shadow-md"
                     : "bg-[#F5F5F5] dark:bg-[#1A1A1A] text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-neutral-800"
                 }`}
               >
@@ -1062,8 +1223,8 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
               <div className="relative inline-block">
                 <Heart className="h-12 w-12 text-slate-200 dark:text-neutral-800" />
                 <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#D4AF37] opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-[#D4AF37]"></span>
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#22C55E] opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-[#22C55E]"></span>
                 </span>
               </div>
               <div className="space-y-1">
@@ -1074,7 +1235,7 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
               </div>
               <button
                 onClick={() => setActiveSection("categories")}
-                className="mt-2 px-5 py-2.5 bg-neutral-900 hover:bg-neutral-800 text-white dark:bg-[#D4AF37] dark:text-neutral-950 text-[9px] font-black tracking-widest rounded-xl uppercase transition active:scale-95"
+                className="mt-2 px-5 py-2.5 bg-neutral-900 hover:bg-neutral-800 text-white dark:bg-[#22C55E] dark:text-neutral-950 text-[9px] font-black tracking-widest rounded-xl uppercase transition active:scale-95"
               >
                 CURATE NOW
               </button>
@@ -1166,7 +1327,7 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                   />
                   <button
                     onClick={handleApplyCouponCode}
-                    className="px-4 py-2.5 bg-black dark:bg-[#D4AF37] text-white dark:text-neutral-950 text-[10px] font-black uppercase tracking-widest rounded-xl transition cursor-pointer"
+                    className="px-4 py-2.5 bg-black dark:bg-[#22C55E] text-white dark:text-neutral-950 text-[10px] font-black uppercase tracking-widest rounded-xl transition cursor-pointer"
                   >
                     APPLY
                   </button>
@@ -1191,7 +1352,7 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                         onClick={() => setCheckoutAddressId(addr.id)}
                         className={`p-3.5 rounded-2xl border cursor-pointer transition flex justify-between items-start ${
                           checkoutAddressId === addr.id
-                            ? "bg-slate-50 dark:bg-neutral-850 border-[#D4AF37]"
+                            ? "bg-slate-50 dark:bg-neutral-850 border-[#22C55E]"
                             : "bg-white dark:bg-[#1A1A1A] border-slate-100 dark:border-neutral-850/80"
                         }`}
                       >
@@ -1202,7 +1363,7 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                           </span>
                         </div>
                         {checkoutAddressId === addr.id && (
-                          <CheckCircle2 className="h-4.5 w-4.5 text-[#D4AF37] flex-shrink-0" />
+                          <CheckCircle2 className="h-4.5 w-4.5 text-[#22C55E] flex-shrink-0" />
                         )}
                       </div>
                     ))}
@@ -1229,7 +1390,7 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                       onClick={() => setCheckoutPayment(p.id as any)}
                       className={`py-3 px-2 rounded-xl text-[10px] font-bold uppercase border cursor-pointer transition ${
                         checkoutPayment === p.id
-                          ? "bg-black dark:bg-[#D4AF37] border-black dark:border-[#D4AF37] text-white dark:text-neutral-950"
+                          ? "bg-black dark:bg-[#22C55E] border-black dark:border-[#22C55E] text-white dark:text-neutral-950"
                           : "bg-[#F5F5F5] dark:bg-[#1A1A1A] border-transparent text-slate-600 dark:text-slate-400"
                       }`}
                     >
@@ -1266,7 +1427,7 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
               {/* Place Secure Order CTA */}
               <button
                 onClick={handlePlaceSecureOrder}
-                className="w-full py-4 bg-black dark:bg-[#D4AF37] hover:bg-neutral-900 dark:hover:bg-[#C5A880] text-white dark:text-neutral-950 font-sans font-bold text-xs uppercase tracking-widest rounded-2xl transition active:scale-95 shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full py-4 bg-black dark:bg-[#22C55E] hover:bg-neutral-900 dark:hover:bg-[#15803D] text-white dark:text-neutral-950 font-sans font-bold text-xs uppercase tracking-widest rounded-2xl transition active:scale-95 shadow-md flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Award className="h-4.5 w-4.5" />
                 <span>PLACE SECURE ORDER</span>
@@ -1284,7 +1445,7 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
               </div>
               <button
                 onClick={() => setActiveSection("categories")}
-                className="px-5 py-2.5 bg-neutral-900 dark:bg-[#D4AF37] text-white dark:text-neutral-950 text-[9px] font-black uppercase tracking-widest rounded-xl transition"
+                className="px-5 py-2.5 bg-neutral-900 dark:bg-[#22C55E] text-white dark:text-neutral-950 text-[9px] font-black uppercase tracking-widest rounded-xl transition"
               >
                 EXPLORE CATALOG
               </button>
@@ -1307,7 +1468,7 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                 <div className="bg-[#FAF9F5] dark:bg-neutral-900 border border-slate-100 dark:border-neutral-800 p-4 rounded-2xl space-y-3.5">
                   <div className="flex justify-between items-center pb-2 border-b">
                     <span className="text-[9px] text-slate-400 uppercase font-black tracking-widest block">Live Dispatch Tracking</span>
-                    <span className="text-[8px] bg-[#D4AF37]/15 text-[#D4AF37] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">AIR PRIORITY</span>
+                    <span className="text-[8px] bg-[#22C55E]/15 text-[#22C55E] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">AIR PRIORITY</span>
                   </div>
                   <div className="space-y-3 text-[10px]">
                     {[
@@ -1319,11 +1480,11 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                       <div key={idx} className="flex gap-3 relative">
                         <div className="flex flex-col items-center">
                           <div className={`w-4 h-4 rounded-full flex items-center justify-center font-bold text-[8px] ${
-                            step.checked ? "bg-[#D4AF37] text-white" : step.active ? "bg-black dark:bg-white text-white dark:text-black animate-pulse" : "bg-neutral-200 text-slate-400"
+                            step.checked ? "bg-[#22C55E] text-white" : step.active ? "bg-black dark:bg-white text-white dark:text-black animate-pulse" : "bg-neutral-200 text-slate-400"
                           }`}>
                             {step.checked ? "✓" : idx + 1}
                           </div>
-                          {idx < 3 && <div className={`w-[2px] h-8 -my-1 ${step.checked ? "bg-[#D4AF37]" : "bg-neutral-200"}`}></div>}
+                          {idx < 3 && <div className={`w-[2px] h-8 -my-1 ${step.checked ? "bg-[#22C55E]" : "bg-neutral-200"}`}></div>}
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
@@ -1345,7 +1506,7 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                   </div>
                   <div className="flex justify-between border-b pb-1.5">
                     <span className="text-slate-400">Payment Gateway</span>
-                    <span className="font-sans font-bold text-[#D4AF37] uppercase">{checkoutPayment} Gateway</span>
+                    <span className="font-sans font-bold text-[#22C55E] uppercase">{checkoutPayment} Gateway</span>
                   </div>
                   <div className="flex justify-between border-b pb-1.5">
                     <span className="text-slate-400">Amount Settled</span>
@@ -1361,7 +1522,7 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                 <div className="grid grid-cols-2 gap-2 pt-1">
                   <button
                     onClick={() => setShowInvoiceModal(viewedOrder)}
-                    className="py-2.5 border border-[#D4AF37]/30 hover:border-[#D4AF37] bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white text-[9px] font-black uppercase tracking-wider rounded-xl cursor-pointer transition flex items-center justify-center gap-1.5"
+                    className="py-2.5 border border-[#22C55E]/30 hover:border-[#22C55E] bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white text-[9px] font-black uppercase tracking-wider rounded-xl cursor-pointer transition flex items-center justify-center gap-1.5"
                   >
                     📃 Download Invoice
                   </button>
@@ -1395,7 +1556,7 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                       setActiveProfileTab("orders");
                       setActiveSection("profile");
                     }}
-                    className="flex-1 py-3 bg-black dark:bg-[#D4AF37] text-white dark:text-neutral-950 text-[10px] font-black uppercase tracking-wider rounded-xl cursor-pointer shadow-md hover:scale-102 transition"
+                    className="flex-1 py-3 bg-black dark:bg-[#22C55E] text-white dark:text-neutral-950 text-[10px] font-black uppercase tracking-wider rounded-xl cursor-pointer shadow-md hover:scale-102 transition"
                   >
                     MY LEDGER
                   </button>
@@ -1407,13 +1568,13 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
           {/* PAYMENT SANDBOX SIMULATOR SHEET (OVERLAY) */}
           {paymentStep !== "idle" && paymentStep !== "success" && (
             <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-              <div className="bg-white dark:bg-[#1A1A1A] max-w-md w-full rounded-3xl p-6 shadow-2xl border border-[#D4AF37]/20 text-black dark:text-white space-y-5 animate-fade-in">
+              <div className="bg-white dark:bg-[#1A1A1A] max-w-md w-full rounded-3xl p-6 shadow-2xl border border-[#22C55E]/20 text-black dark:text-white space-y-5 animate-fade-in">
                 
                 {/* Mode Selectors */}
                 {paymentStep === "gateway_select" && (
                   <div className="space-y-4">
                     <div className="text-center space-y-1">
-                      <span className="text-[9px] font-mono text-[#D4AF37] uppercase tracking-widest font-bold block">Secure Gateway Node</span>
+                      <span className="text-[9px] font-mono text-[#22C55E] uppercase tracking-widest font-bold block">Secure Gateway Node</span>
                       <h4 className="text-base font-black uppercase tracking-tight">Select Payment Router</h4>
                     </div>
 
@@ -1432,7 +1593,7 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                           onClick={() => setPaymentGatewayType(gw.id as any)}
                           className={`p-3 rounded-2xl border text-left cursor-pointer transition ${
                             paymentGatewayType === gw.id
-                              ? "bg-[#FAF9F5] dark:bg-neutral-900 border-[#D4AF37]"
+                              ? "bg-[#FAF9F5] dark:bg-neutral-900 border-[#22C55E]"
                               : "bg-white dark:bg-[#202020] border-transparent"
                           }`}
                         >
@@ -1456,7 +1617,7 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                             onChange={(e) => setTestFailureToggle(e.target.checked)}
                             className="sr-only peer" 
                           />
-                          <div className="w-9 h-5 bg-neutral-200 peer-focus:outline-none rounded-full peer dark:bg-neutral-800 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#D4AF37]"></div>
+                          <div className="w-9 h-5 bg-neutral-200 peer-focus:outline-none rounded-full peer dark:bg-neutral-800 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#22C55E]"></div>
                         </label>
                       </div>
                     </div>
@@ -1470,7 +1631,7 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                       </button>
                       <button
                         onClick={() => triggerPaymentHandshake(false)}
-                        className="flex-1 py-3 bg-black dark:bg-[#D4AF37] text-white dark:text-neutral-950 text-[10px] font-black uppercase rounded-xl cursor-pointer font-sans"
+                        className="flex-1 py-3 bg-black dark:bg-[#22C55E] text-white dark:text-neutral-950 text-[10px] font-black uppercase rounded-xl cursor-pointer font-sans"
                       >
                         INITIALIZE GATEWAY
                       </button>
@@ -1482,10 +1643,10 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                 {paymentStep === "processing" && (
                   <div className="space-y-4">
                     <div className="text-center space-y-2">
-                      <div className="w-12 h-12 rounded-full border-4 border-dashed border-[#D4AF37] animate-spin mx-auto flex items-center justify-center">
+                      <div className="w-12 h-12 rounded-full border-4 border-dashed border-[#22C55E] animate-spin mx-auto flex items-center justify-center">
                         🔒
                       </div>
-                      <span className="text-[9px] font-mono text-[#D4AF37] uppercase tracking-widest font-black block">LEDGER CLEARING ACTIVE</span>
+                      <span className="text-[9px] font-mono text-[#22C55E] uppercase tracking-widest font-black block">LEDGER CLEARING ACTIVE</span>
                       <h4 className="text-sm font-black uppercase tracking-tight">Processing Handshake</h4>
                     </div>
 
@@ -1534,7 +1695,7 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                           setTestFailureToggle(false);
                           triggerPaymentHandshake(true);
                         }}
-                        className="flex-1 py-3 bg-black dark:bg-[#D4AF37] text-white dark:text-neutral-950 text-[10px] font-black uppercase rounded-xl cursor-pointer flex items-center justify-center gap-1.5"
+                        className="flex-1 py-3 bg-black dark:bg-[#22C55E] text-white dark:text-neutral-950 text-[10px] font-black uppercase rounded-xl cursor-pointer flex items-center justify-center gap-1.5"
                       >
                         🔄 RETRY PAYMENT
                       </button>
@@ -1549,10 +1710,10 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
           {/* INVOICE MODAL DOWNLOADABLE VIEW */}
           {showInvoiceModal && (
             <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-              <div className="bg-white dark:bg-[#1E1E1E] max-w-lg w-full rounded-3xl p-6 shadow-2xl border border-[#D4AF37]/20 text-neutral-900 dark:text-white space-y-5 animate-fade-in">
+              <div className="bg-white dark:bg-[#1E1E1E] max-w-lg w-full rounded-3xl p-6 shadow-2xl border border-[#22C55E]/20 text-neutral-900 dark:text-white space-y-5 animate-fade-in">
                 <div className="flex justify-between items-start border-b pb-4">
                   <div>
-                    <h3 className="font-extrabold text-sm uppercase tracking-widest text-[#D4AF37]">NAYEL BASKET LUXURY</h3>
+                    <h3 className="font-extrabold text-sm uppercase tracking-widest text-[#22C55E]">NAYEL BASKET LUXURY</h3>
                     <p className="text-[9px] text-slate-400 mt-0.5">Atelier Studio Logistics Node • NY</p>
                   </div>
                   <button 
@@ -1587,7 +1748,7 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                     <span className="text-right">Settled Price</span>
                   </div>
                   <div className="space-y-2 text-slate-600 dark:text-slate-300">
-                    {cart.map((c, index) => (
+                    {showInvoiceModal.items.map((c, index) => (
                       <div key={index} className="grid grid-cols-3">
                         <span className="font-semibold text-neutral-900 dark:text-white truncate">{c.product.name}</span>
                         <span className="text-center font-mono font-bold">{c.quantity}</span>
@@ -1605,11 +1766,11 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                   </div>
                   <div className="flex justify-between">
                     <span>VAT Logistics Tax (0%)</span>
-                    <span className="font-mono font-bold text-[#D4AF37]">Complimentary</span>
+                    <span className="font-mono font-bold text-[#22C55E]">Complimentary</span>
                   </div>
                   <div className="flex justify-between border-t pt-1.5 text-xs font-black uppercase text-neutral-900 dark:text-white">
                     <span>Settle Balance</span>
-                    <span className="font-mono font-bold text-[#D4AF37]">${showInvoiceModal.total}</span>
+                    <span className="font-mono font-bold text-[#22C55E]">${showInvoiceModal.total}</span>
                   </div>
                 </div>
 
@@ -1619,7 +1780,7 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                       alert(`Invoice saved securely to system files as NAYEL_INVOICE_${showInvoiceModal.id}.pdf`);
                       setShowInvoiceModal(null);
                     }}
-                    className="flex-1 py-3 bg-black dark:bg-[#D4AF37] text-white dark:text-neutral-950 text-[10px] font-black uppercase rounded-xl cursor-pointer text-center"
+                    className="flex-1 py-3 bg-black dark:bg-[#22C55E] text-white dark:text-neutral-950 text-[10px] font-black uppercase rounded-xl cursor-pointer text-center"
                   >
                     📥 SAVE INVOICE AS PDF
                   </button>
@@ -1662,7 +1823,7 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                     <div key={idx} className="flex gap-3">
                       <div className="flex flex-col items-center">
                         <div className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[8px] font-bold ${
-                          step.done ? "bg-red-500 text-white" : step.pending ? "bg-[#D4AF37] text-white animate-pulse" : "bg-neutral-200 text-slate-400"
+                          step.done ? "bg-red-500 text-white" : step.pending ? "bg-[#22C55E] text-white animate-pulse" : "bg-neutral-200 text-slate-400"
                         }`}>
                           {step.done ? "✓" : idx + 1}
                         </div>
@@ -1671,7 +1832,7 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                       <div>
                         <div className="flex items-center gap-1.5">
                           <span className="font-bold text-neutral-900 dark:text-white uppercase text-[9px]">{step.title}</span>
-                          {step.pending && <span className="text-[7px] text-[#D4AF37] font-black uppercase animate-pulse">PENDING CLOUD SYNC</span>}
+                          {step.pending && <span className="text-[7px] text-[#22C55E] font-black uppercase animate-pulse">PENDING CLOUD SYNC</span>}
                         </div>
                         <p className="text-[8px] text-slate-400 mt-0.5">{step.desc}</p>
                       </div>
@@ -1711,7 +1872,7 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
               👤
             </div>
             <div>
-              <span className="text-[8px] bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20 px-2 py-0.5 rounded-full font-bold uppercase font-sans tracking-widest">
+              <span className="text-[8px] bg-[#22C55E]/10 text-[#22C55E] border border-[#22C55E]/20 px-2 py-0.5 rounded-full font-bold uppercase font-sans tracking-widest">
                 Elite Ambassador
               </span>
               <h2 className="text-lg font-black text-neutral-950 dark:text-white uppercase mt-1">Nayel Patron</h2>
@@ -1729,7 +1890,7 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                   addWalletFunds(150);
                   addNotification("💰 Wallet Top-Up", "Successfully topped up $150 via Simulated Apple Pay Gateway.", "system");
                 }}
-                className="mt-2 text-[8px] text-[#D4AF37] font-bold hover:underline uppercase block mx-auto"
+                className="mt-2 text-[8px] text-[#22C55E] font-bold hover:underline uppercase block mx-auto"
               >
                 + Top Up $150
               </button>
@@ -1737,7 +1898,7 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
 
             <div className="bg-[#FAF9F5] dark:bg-[#1A1A1A] border border-[#EAE6D8]/50 dark:border-neutral-850/80 rounded-2xl p-4 text-center">
               <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block font-sans">Reward Points</span>
-              <span className="text-xl font-mono font-black text-[#D4AF37] mt-1.5 block">{rewardPoints} PTS</span>
+              <span className="text-xl font-mono font-black text-[#22C55E] mt-1.5 block">{rewardPoints} PTS</span>
               <span className="text-[7px] text-slate-400 uppercase tracking-wider block mt-1">Elite VIP Status</span>
             </div>
           </div>
@@ -1758,7 +1919,7 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                 onClick={() => setActiveProfileTab(tab.id as any)}
                 className={`px-3 py-2 text-[9px] font-bold uppercase tracking-wider border-b-2 transition cursor-pointer flex-shrink-0 ${
                   activeProfileTab === tab.id
-                    ? "border-[#D4AF37] text-[#D4AF37]"
+                    ? "border-[#22C55E] text-[#22C55E]"
                     : "border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
                 }`}
               >
@@ -1782,10 +1943,10 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                 </div>
 
                 {/* PWA Installation Card */}
-                <div className="bg-[#FAF9F5] dark:bg-[#1A1A1A] p-4.5 rounded-2xl border border-[#D4AF37]/30 space-y-3 text-xs">
+                <div className="bg-[#FAF9F5] dark:bg-[#1A1A1A] p-4.5 rounded-2xl border border-[#22C55E]/30 space-y-3 text-xs">
                   <div className="flex justify-between items-start">
                     <div className="space-y-1">
-                      <span className="text-[9px] bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20 px-2.5 py-0.5 rounded-full font-bold uppercase tracking-widest block w-max font-mono">
+                      <span className="text-[9px] bg-[#22C55E]/10 text-[#22C55E] border border-[#22C55E]/20 px-2.5 py-0.5 rounded-full font-bold uppercase tracking-widest block w-max font-mono">
                         {isInstalled ? "Premium Standalone Active" : "Luxury Atelier Mobile"}
                       </span>
                       <h4 className="text-xs font-black uppercase text-neutral-900 dark:text-white mt-1">
@@ -1801,7 +1962,7 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                   {!isInstalled && (
                     <button
                       onClick={triggerInstall}
-                      className="w-full py-3 bg-black dark:bg-[#D4AF37] text-white dark:text-neutral-950 text-[10px] font-black uppercase tracking-wider rounded-xl hover:bg-neutral-900 dark:hover:bg-[#cfa52f] transition cursor-pointer flex items-center justify-center gap-2"
+                      className="w-full py-3 bg-black dark:bg-[#22C55E] text-white dark:text-neutral-950 text-[10px] font-black uppercase tracking-wider rounded-xl hover:bg-neutral-900 dark:hover:bg-[#cfa52f] transition cursor-pointer flex items-center justify-center gap-2"
                     >
                       <Smartphone className="h-3.5 w-3.5" />
                       <span>{isInstallable ? "Install App Now" : "Install App Guide"}</span>
@@ -1816,14 +1977,14 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                       onClick={onSelectSeller}
                       className="py-3.5 bg-[#FAF9F5] dark:bg-[#161616] hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-950 dark:text-white border border-[#EAE6D8]/50 dark:border-neutral-850 text-[10px] font-black uppercase tracking-wider rounded-xl transition cursor-pointer shadow-sm flex items-center justify-center gap-1.5"
                     >
-                      <Compass className="h-3.5 w-3.5 text-[#D4AF37]" />
+                      <Compass className="h-3.5 w-3.5 text-[#22C55E]" />
                       <span>Seller Portal</span>
                     </button>
                     <button
                       onClick={onSelectAdmin}
                       className="py-3.5 bg-[#FAF9F5] dark:bg-[#161616] hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-950 dark:text-white border border-[#EAE6D8]/50 dark:border-neutral-850 text-[10px] font-black uppercase tracking-wider rounded-xl transition cursor-pointer shadow-sm flex items-center justify-center gap-1.5"
                     >
-                      <Award className="h-3.5 w-3.5 text-[#D4AF37]" />
+                      <Award className="h-3.5 w-3.5 text-[#22C55E]" />
                       <span>Admin Gate</span>
                     </button>
                   </div>
@@ -1973,7 +2134,7 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                           setShowAddressForm(false);
                           addNotification("🛡️ Node Deployed", "Shipping address node logged successfully.", "system");
                         }}
-                        className="flex-1 py-2 bg-black dark:bg-[#D4AF37] text-white dark:text-neutral-950 font-bold uppercase rounded-xl text-[9px]"
+                        className="flex-1 py-2 bg-black dark:bg-[#22C55E] text-white dark:text-neutral-950 font-bold uppercase rounded-xl text-[9px]"
                       >
                         SAVE NODE
                       </button>
@@ -1997,13 +2158,13 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                       applyCoupon(c.code);
                       addNotification("🎟️ Voucher Pre-loaded", `Voucher ${c.code} is staged for checkout.`, "system");
                     }}
-                    className="bg-[#FAF9F5] dark:bg-[#1A1A1A] border-2 border-dashed border-[#EAE6D8] dark:border-neutral-800 p-4.5 rounded-2xl flex justify-between items-center text-xs cursor-pointer hover:border-[#D4AF37] transition"
+                    className="bg-[#FAF9F5] dark:bg-[#1A1A1A] border-2 border-dashed border-[#EAE6D8] dark:border-neutral-800 p-4.5 rounded-2xl flex justify-between items-center text-xs cursor-pointer hover:border-[#22C55E] transition"
                   >
                     <div className="space-y-1">
                       <span className="font-mono font-black text-sm text-neutral-950 dark:text-white tracking-widest block">{c.code}</span>
                       <p className="text-[10px] text-slate-400 dark:text-slate-500 font-light leading-relaxed">{c.desc}</p>
                     </div>
-                    <span className="text-[9px] text-[#D4AF37] font-bold uppercase tracking-wider border border-[#D4AF37]/20 px-2.5 py-1 rounded-full bg-[#D4AF37]/5">Staged</span>
+                    <span className="text-[9px] text-[#22C55E] font-bold uppercase tracking-wider border border-[#22C55E]/20 px-2.5 py-1 rounded-full bg-[#22C55E]/5">Staged</span>
                   </div>
                 ))}
               </div>
@@ -2039,7 +2200,7 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                     }
                   }}
                   className={`w-full py-3.5 font-sans font-bold uppercase text-[9px] tracking-widest rounded-xl transition cursor-pointer ${
-                    isBiometricRegistered ? "bg-red-500/10 text-red-500 hover:bg-red-500/15" : "bg-black dark:bg-[#D4AF37] text-white dark:text-neutral-950"
+                    isBiometricRegistered ? "bg-red-500/10 text-red-500 hover:bg-red-500/15" : "bg-black dark:bg-[#22C55E] text-white dark:text-neutral-950"
                   }`}
                 >
                   {isBiometricRegistered ? "REMOVE BIOMETRIC KEY" : "REGISTER WEBAUTHN DEVICE PASSKEY"}
@@ -2053,12 +2214,12 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                 <div className="bg-[#FAF9F5] dark:bg-[#1C1C1C] border border-[#EAE6D8]/50 dark:border-neutral-850 p-5 rounded-2xl space-y-4">
                   <div className="flex justify-between items-start">
                     <div>
-                      <span className="text-[8px] bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20 px-2.5 py-0.5 rounded-full font-bold uppercase tracking-widest block w-max">
+                      <span className="text-[8px] bg-[#22C55E]/10 text-[#22C55E] border border-[#22C55E]/20 px-2.5 py-0.5 rounded-full font-bold uppercase tracking-widest block w-max">
                         VIP Patron Rewards
                       </span>
                       <h3 className="text-xs font-black uppercase mt-1">Ambassador Network</h3>
                     </div>
-                    <span className="font-mono font-black text-[#D4AF37] text-[13px]">${referralWalletBalance} Earned</span>
+                    <span className="font-mono font-black text-[#22C55E] text-[13px]">${referralWalletBalance} Earned</span>
                   </div>
                   <p className="text-[10px] text-slate-400 leading-relaxed">
                     Gift your inner circle 15% off their curated collections, and harvest <strong>$50</strong> into your luxury ledger upon their completed shipment.
@@ -2076,7 +2237,7 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                       navigator.clipboard.writeText(referralCode);
                       addNotification("📋 Referral Copied", "Your exclusive ambassador code was copied to clipboard.", "system");
                     }}
-                    className="px-4 py-2 bg-black dark:bg-[#D4AF37] text-white dark:text-neutral-950 text-[9px] font-bold uppercase tracking-wider rounded-xl cursor-pointer"
+                    className="px-4 py-2 bg-black dark:bg-[#22C55E] text-white dark:text-neutral-950 text-[9px] font-bold uppercase tracking-wider rounded-xl cursor-pointer"
                   >
                     COPY
                   </button>
@@ -2122,7 +2283,7 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                           <span className={`inline-block text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${
                             ref.status === "Completed" ? "bg-emerald-400/15 text-emerald-500" : "bg-yellow-400/15 text-yellow-500"
                           }`}>{ref.status}</span>
-                          <span className="font-mono font-bold text-[#D4AF37] block mt-1 text-[11px]">{ref.reward > 0 ? `+$${ref.reward}` : "--"}</span>
+                          <span className="font-mono font-bold text-[#22C55E] block mt-1 text-[11px]">{ref.reward > 0 ? `+$${ref.reward}` : "--"}</span>
                         </div>
                       </div>
                     ))}
@@ -2159,7 +2320,7 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
       {showBiometricPrompt && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-6">
           <div className="bg-white dark:bg-[#1A1A1A] rounded-3xl p-6 max-w-xs w-full text-center space-y-4 text-black dark:text-white">
-            <div className="mx-auto w-16 h-16 rounded-full border-2 border-[#D4AF37]/30 flex items-center justify-center text-4xl animate-pulse">
+            <div className="mx-auto w-16 h-16 rounded-full border-2 border-[#22C55E]/30 flex items-center justify-center text-4xl animate-pulse">
               🛡️
             </div>
             <div className="space-y-1">

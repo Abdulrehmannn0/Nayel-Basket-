@@ -12,7 +12,6 @@ const ASSETS_TO_CACHE = [
   "/index.html",
   "/offline.html",
   "/manifest.json",
-  "/icon.svg",
   "/icon-512.jpg",
   "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
 ];

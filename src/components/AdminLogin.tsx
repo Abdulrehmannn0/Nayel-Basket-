@@ -183,7 +183,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess }) => {
 
         <div className="text-center space-y-2 mb-8 mt-2">
           <div className="h-16 w-16 bg-neutral-950 rounded-2xl flex items-center justify-center mx-auto p-1.5 border border-neutral-800 shadow-md overflow-hidden">
-            <img src="/icon.svg" alt="Nayel Basket Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+            <img src="/icon-512.jpg" alt="Nayel Basket Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
           </div>
           <h1 className="text-2xl font-black text-black uppercase tracking-tight font-sans">
             Nayel Basket

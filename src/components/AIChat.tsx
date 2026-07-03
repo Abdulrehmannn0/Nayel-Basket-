@@ -518,13 +518,19 @@ Please make sure your API key is correctly configured and click the **Retry** bu
                 </span>
               </div>
 
-              <div 
-                className={`p-3.5 rounded-2xl max-w-xl text-sm leading-relaxed shadow-md ${
-                  m.sender === "user"
-                    ? "bg-emerald-600 text-white rounded-tr-none"
-                    : "bg-white dark:bg-[#1A1A1A] border border-slate-100 dark:border-[#222222] text-slate-800 dark:text-slate-200 rounded-tl-none"
-                }`}
-              >
+              <div className="flex gap-2.5 items-start max-w-full w-full">
+                {m.sender === "ai" && (
+                  <div className="w-8 h-8 rounded-xl overflow-hidden bg-neutral-950 dark:bg-black border border-[#22C55E]/40 p-1 shrink-0 flex items-center justify-center shadow-md animate-fade-in">
+                    <img src="/icon-512.jpg" alt="Nayel Basket" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                  </div>
+                )}
+                <div 
+                  className={`p-3.5 rounded-2xl max-w-xl text-sm leading-relaxed shadow-md ${
+                    m.sender === "user"
+                      ? "bg-emerald-600 text-white rounded-tr-none ml-auto"
+                      : "bg-white dark:bg-[#1A1A1A] border border-slate-100 dark:border-[#222222] text-slate-800 dark:text-slate-200 rounded-tl-none"
+                  }`}
+                >
                 {/* Regular text */}
                 <div className="whitespace-pre-line prose prose-invert prose-sm">
                   {m.text}
@@ -618,13 +624,23 @@ Please make sure your API key is correctly configured and click the **Retry** bu
                   </div>
                 )}
               </div>
+              </div>
             </div>
           ))}
 
           {isLoading && (
-            <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-xs bg-white dark:bg-[#1A1A1A] border border-slate-100 dark:border-[#222222] px-3 py-2 rounded-xl w-max animate-pulse">
-              <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-400" />
-              <span>Curation algorithm framing concepts...</span>
+            <div className="flex items-start gap-2 max-w-[85%] self-start animate-fade-in">
+              <div className="h-7 w-7 rounded-lg bg-emerald-500/15 text-[#22C55E] flex items-center justify-center flex-shrink-0 border border-[#22C55E]/10">
+                <Sparkles className="h-4 w-4 text-[#22C55E]" />
+              </div>
+              <div className="bg-slate-50 dark:bg-neutral-900 border border-slate-100 dark:border-neutral-800/40 rounded-2xl rounded-tl-none p-3.5 text-xs text-slate-700 dark:text-slate-300">
+                <div className="flex items-center gap-1.5 py-1">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: "0ms" }} />
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: "150ms" }} />
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: "300ms" }} />
+                </div>
+                <span className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 block font-medium">Concierge is drafting advice...</span>
+              </div>
             </div>
           )}
 

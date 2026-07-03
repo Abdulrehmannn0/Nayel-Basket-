@@ -13,7 +13,7 @@ interface ProductCardProps {
   onSelect: (product: Product) => void;
 }
 
-export const ProductCard: React.FC<ProductCardProps> = ({ product, onSelect }) => {
+export const ProductCard = React.memo<ProductCardProps>(({ product, onSelect }) => {
   const { wishlist, toggleWishlist, addToCart, theme, addNotification } = useApp();
   const isWishlisted = wishlist.some((p) => p.id === product.id);
 
@@ -87,7 +87,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onSelect }) =
         <div className="absolute top-4 left-4 right-4 flex justify-between items-center z-10 pointer-events-none">
           {/* Discount Badge */}
           {discountPercent > 0 ? (
-            <span className="pointer-events-auto bg-black dark:bg-[#D4AF37] text-white dark:text-neutral-950 text-[9px] font-black tracking-wider px-2.5 py-1 rounded-full uppercase shadow-md font-sans">
+            <span className="pointer-events-auto bg-black dark:bg-[#22C55E] text-white dark:text-neutral-950 text-[9px] font-black tracking-wider px-2.5 py-1 rounded-full uppercase shadow-md font-sans">
               -{discountPercent}%
             </span>
           ) : (
@@ -119,7 +119,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onSelect }) =
             className={`w-full py-3 text-xs font-bold rounded-2xl tracking-widest transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer uppercase ${
               product.stock <= 0
                 ? "bg-slate-200 dark:bg-neutral-850 text-slate-400 cursor-not-allowed"
-                : "bg-black hover:bg-neutral-900 dark:bg-[#D4AF37] dark:hover:bg-[#C5A880] text-white dark:text-neutral-950"
+                : "bg-black hover:bg-neutral-900 dark:bg-[#22C55E] dark:hover:bg-[#15803D] text-white dark:text-neutral-950"
             }`}
           >
             <ShoppingBag className="h-3.5 w-3.5" />
@@ -138,7 +138,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onSelect }) =
         </div>
 
         <div className="space-y-1">
-          <h3 className="font-semibold text-[13px] text-neutral-900 dark:text-neutral-100 leading-snug line-clamp-2 min-h-[2.2rem] group-hover:text-[#D4AF37] transition-colors">
+          <h3 className="font-semibold text-[13px] text-neutral-900 dark:text-neutral-100 leading-snug line-clamp-2 min-h-[2.2rem] group-hover:text-[#22C55E] transition-colors">
             {product.name}
           </h3>
           
@@ -188,4 +188,4 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onSelect }) =
       </div>
     </div>
   );
-};
+});

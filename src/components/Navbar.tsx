@@ -104,8 +104,8 @@ export const Navbar: React.FC<NavbarProps> = ({ activeSection, setActiveSection 
 
   return (
     <>
-      {/* Top Mobile-Native Bar */}
-      <nav className="sticky top-0 z-40 bg-white dark:bg-[#111111] backdrop-blur-md border-b border-slate-100 dark:border-[#222222] text-black dark:text-white transition-colors duration-300 px-4 h-16 flex items-center justify-between relative">
+      {/* Top Mobile-Native Bar with Premium Glass Effect */}
+      <nav className="sticky top-0 z-40 bg-white/85 dark:bg-[#111111]/85 backdrop-blur-xl border-b border-slate-200/55 dark:border-neutral-800/55 text-[#111111] dark:text-[#FFFFFF] transition-colors duration-300 px-4 h-16 flex items-center justify-between relative">
         
         {/* Left Action: Hamburger Drawer Trigger */}
         <button
@@ -114,7 +114,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeSection, setActiveSection 
             setIsDrawerOpen(true);
             if (navigator.vibrate) navigator.vibrate(10);
           }}
-          className="p-2 rounded-full text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-neutral-800 active:scale-95 transition cursor-pointer"
+          className="p-2 rounded-full text-slate-700 dark:text-slate-300 hover:bg-slate-100/50 dark:hover:bg-neutral-800/50 active:scale-95 transition cursor-pointer"
         >
           <Menu className="h-5.5 w-5.5 stroke-[2]" />
         </button>
@@ -126,19 +126,18 @@ export const Navbar: React.FC<NavbarProps> = ({ activeSection, setActiveSection 
             setActiveSection("home");
             if (navigator.vibrate) navigator.vibrate(10);
           }}
-          className="flex items-center gap-1.5 cursor-pointer select-none active:scale-95 transition absolute left-1/2 -translate-x-1/2"
+          className="flex items-center gap-2 cursor-pointer select-none active:scale-95 transition absolute left-1/2 -translate-x-1/2"
         >
           <div className="bg-neutral-950 dark:bg-neutral-900 w-7 h-7 rounded-lg overflow-hidden flex items-center justify-center p-0.5 border border-neutral-800">
-            <img src="/icon.svg" alt="Nayel Basket" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+            <img src="/icon-512.jpg" alt="Nayel Basket" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
           </div>
           <span className="text-[14px] font-black tracking-[0.2em] font-sans text-slate-950 dark:text-white uppercase">
             NAYEL BASKET
           </span>
         </div>
 
-        {/* Right Actions: Notifications & Cart */}
+        {/* Right Action: Notifications ONLY */}
         <div className="flex items-center gap-1">
-          {/* Notifications Button */}
           <div className="relative">
             <button
               id="btn-notifications-header"
@@ -146,7 +145,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeSection, setActiveSection 
                 setOpenNotifications(!openNotifications);
                 if (navigator.vibrate) navigator.vibrate(10);
               }}
-              className={`p-2 rounded-full relative transition active:scale-95 cursor-pointer ${openNotifications ? "text-[#D4AF37]" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"}`}
+              className={`p-2 rounded-full relative transition active:scale-95 cursor-pointer ${openNotifications ? "text-[#22C55E]" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"}`}
             >
               <Bell className="h-5.5 w-5.5 stroke-[1.8]" />
               {unreadCount > 0 && (
@@ -176,7 +175,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeSection, setActiveSection 
                     notifications.map((n) => (
                       <div 
                         key={n.id} 
-                        className={`p-3.5 text-xs transition-colors cursor-pointer ${n.read ? "bg-white dark:bg-[#111111]" : "bg-amber-500/5 dark:bg-amber-500/10"}`}
+                        className={`p-3.5 text-xs transition-colors cursor-pointer ${n.read ? "bg-white dark:bg-[#111111]" : "bg-emerald-500/5 dark:bg-emerald-500/10"}`}
                         onClick={() => {
                           markNotificationAsRead(n.id);
                         }}
@@ -198,23 +197,6 @@ export const Navbar: React.FC<NavbarProps> = ({ activeSection, setActiveSection 
               </div>
             )}
           </div>
-
-          {/* Quick Shopping Cart Button */}
-          <button
-            id="btn-cart-header"
-            onClick={() => {
-              setActiveSection("cart");
-              if (navigator.vibrate) navigator.vibrate(10);
-            }}
-            className={`p-2 rounded-full relative transition active:scale-95 cursor-pointer ${activeSection === "cart" ? "text-[#D4AF37]" : "text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"}`}
-          >
-            <ShoppingBag className="h-5.5 w-5.5 stroke-[1.8]" />
-            {cartCount > 0 && (
-              <span className="absolute top-1.5 right-1.5 bg-rose-500 text-white text-[8px] font-black px-1.5 py-0.2 rounded-full shadow animate-pulse scale-90">
-                {cartCount}
-              </span>
-            )}
-          </button>
         </div>
       </nav>
 
@@ -241,18 +223,18 @@ export const Navbar: React.FC<NavbarProps> = ({ activeSection, setActiveSection 
 
               <div className="flex items-center gap-3 mt-2">
                 <div className="w-12 h-12 bg-neutral-950 rounded-xl flex items-center justify-center shadow-md border border-neutral-800 p-1 overflow-hidden">
-                  <img src="/icon.svg" alt="Nayel Basket" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                  <img src="/icon-512.jpg" alt="Nayel Basket" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
                 </div>
                 <div>
                   <h3 className="text-sm font-black tracking-widest text-white uppercase font-sans">NAYEL BASKET</h3>
-                  <span className="text-[9px] text-[#D4AF37] font-mono font-bold tracking-wider uppercase block mt-0.5">EST. 2026</span>
+                  <span className="text-[9px] text-[#22C55E] font-mono font-bold tracking-wider uppercase block mt-0.5">EST. 2026</span>
                 </div>
               </div>
 
               {customerUser ? (
                 <div className="border-t border-white/10 pt-3 mt-1 text-left">
                   <span className="text-xs font-bold text-white block leading-tight">{customerUser.name}</span>
-                  <span className="text-[9px] text-[#D4AF37] uppercase font-bold tracking-wider mt-0.5 inline-flex items-center gap-1">
+                  <span className="text-[9px] text-[#22C55E] uppercase font-bold tracking-wider mt-0.5 inline-flex items-center gap-1">
                     👑 Elite {customerUser.tier.replace(" tier", "")} Connoisseur
                   </span>
                 </div>
@@ -267,7 +249,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeSection, setActiveSection 
                       setActiveSection("profile");
                       setIsDrawerOpen(false);
                     }}
-                    className="bg-[#D4AF37] hover:bg-[#C5A880] text-slate-950 text-[9px] font-black px-3 py-1.5 rounded-lg uppercase tracking-wider transition cursor-pointer"
+                    className="bg-[#22C55E] hover:bg-[#15803D] text-slate-950 text-[9px] font-black px-3 py-1.5 rounded-lg uppercase tracking-wider transition cursor-pointer"
                   >
                     Login
                   </button>
@@ -286,7 +268,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeSection, setActiveSection 
                 }}
                 className={`w-full flex items-center gap-4 px-4 py-2.5 rounded-xl text-xs font-bold transition text-left cursor-pointer ${
                   activeSection === "home" 
-                    ? "bg-slate-50 dark:bg-neutral-800 text-[#D4AF37]" 
+                    ? "bg-slate-50 dark:bg-neutral-800 text-[#22C55E]" 
                     : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-neutral-850"
                 }`}
               >
@@ -302,7 +284,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeSection, setActiveSection 
                 }}
                 className={`w-full flex items-center gap-4 px-4 py-2.5 rounded-xl text-xs font-bold transition text-left cursor-pointer ${
                   activeSection === "categories" 
-                    ? "bg-slate-50 dark:bg-neutral-800 text-[#D4AF37]" 
+                    ? "bg-slate-50 dark:bg-neutral-800 text-[#22C55E]" 
                     : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-neutral-850"
                 }`}
               >
@@ -322,7 +304,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeSection, setActiveSection 
                 }}
                 className={`w-full flex items-center gap-4 px-4 py-2.5 rounded-xl text-xs font-bold transition text-left cursor-pointer ${
                   activeSection === "profile" && localStorage.getItem("nb_active_profile_tab") !== "addresses"
-                    ? "bg-slate-50 dark:bg-neutral-800 text-[#D4AF37]" 
+                    ? "bg-slate-50 dark:bg-neutral-800 text-[#22C55E]" 
                     : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-neutral-850"
                 }`}
               >
@@ -338,7 +320,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeSection, setActiveSection 
                 }}
                 className={`w-full flex items-center gap-4 px-4 py-2.5 rounded-xl text-xs font-bold transition text-left cursor-pointer ${
                   activeSection === "orders" 
-                    ? "bg-slate-50 dark:bg-neutral-800 text-[#D4AF37]" 
+                    ? "bg-slate-50 dark:bg-neutral-800 text-[#22C55E]" 
                     : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-neutral-850"
                 }`}
               >
@@ -354,7 +336,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeSection, setActiveSection 
                 }}
                 className={`w-full flex items-center gap-4 px-4 py-2.5 rounded-xl text-xs font-bold transition text-left cursor-pointer ${
                   activeSection === "wishlist" 
-                    ? "bg-slate-50 dark:bg-neutral-800 text-[#D4AF37]" 
+                    ? "bg-slate-50 dark:bg-neutral-800 text-[#22C55E]" 
                     : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-neutral-850"
                 }`}
               >
@@ -429,7 +411,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeSection, setActiveSection 
                   <Globe className="h-4.5 w-4.5 stroke-[1.8]" />
                   <span>🌐 Language</span>
                 </div>
-                <span className="text-[10px] text-[#D4AF37] font-sans font-semibold pr-1">{currentLanguage}</span>
+                <span className="text-[10px] text-[#22C55E] font-sans font-semibold pr-1">{currentLanguage}</span>
               </button>
 
               {/* 9. Appearance with Immediate Accordion Trigger */}
@@ -460,7 +442,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeSection, setActiveSection 
                         }}
                         className={`w-full text-left py-1.5 px-3 text-[11px] font-bold rounded-lg transition-colors ${
                           themePreference === opt.id 
-                            ? "bg-[#D4AF37]/10 text-[#D4AF37]" 
+                            ? "bg-[#22C55E]/10 text-[#22C55E]" 
                             : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-neutral-850"
                         }`}
                       >
@@ -544,12 +526,12 @@ export const Navbar: React.FC<NavbarProps> = ({ activeSection, setActiveSection 
                   }}
                   className={`w-full flex items-center justify-between p-3 text-xs font-semibold rounded-xl transition ${
                     currentLanguage === lang 
-                      ? "bg-[#D4AF37]/10 text-[#D4AF37]" 
+                      ? "bg-[#22C55E]/10 text-[#22C55E]" 
                       : "hover:bg-slate-50 dark:hover:bg-neutral-850"
                   }`}
                 >
                   <span>{lang}</span>
-                  {currentLanguage === lang && <Check className="h-4 w-4 text-[#D4AF37]" />}
+                  {currentLanguage === lang && <Check className="h-4 w-4 text-[#22C55E]" />}
                 </button>
               ))}
             </div>
@@ -572,7 +554,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeSection, setActiveSection 
               </button>
 
               <div className="w-12 h-12 rounded-xl bg-neutral-950 mx-auto flex items-center justify-center shadow-md mb-2 p-1 border border-neutral-800 overflow-hidden">
-                <img src="/icon.svg" alt="Nayel Basket" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                <img src="/icon-512.jpg" alt="Nayel Basket" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
               </div>
               <h2 className="text-md font-black tracking-widest uppercase">Nayel Basket</h2>
               <span className="text-[9px] text-emerald-400 font-mono tracking-widest block mt-0.5">THE ARTISANAL CRADLE</span>
