@@ -7,9 +7,9 @@ interface AdminLoginProps {
 }
 
 export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess }) => {
-  const [email, setEmail] = useState("admin@nayelbasket.com");
-  const [password, setPassword] = useState("admin123");
-  const [role, setRole] = useState<"super_admin" | "admin" | "manager" | "staff" | "customer">("admin");
+  const [email, setEmail] = useState("abdullrehmann011@gmail.com");
+  const [password, setPassword] = useState("NB@2026#Admin!Secure");
+  const [role, setRole] = useState<"super_admin" | "admin" | "manager" | "staff" | "customer">("super_admin");
   const [use2FA, setUse2FA] = useState(false);
   const [totpCode, setTotpCode] = useState("");
   const [rememberMe, setRememberMe] = useState(() => {
@@ -21,8 +21,8 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess }) => {
 
   // Suggested credentials for ease of testing all 5 roles
   const credentials = {
-    super_admin: { email: "super_admin@nayelbasket.com", pass: "super123" },
-    admin: { email: "admin@nayelbasket.com", pass: "admin123" },
+    super_admin: { email: "abdullrehmann011@gmail.com", pass: "NB@2026#Admin!Secure" },
+    admin: { email: "abdullrehmann011@gmail.com", pass: "NB@2026#Admin!Secure" },
     manager: { email: "manager@nayelbasket.com", pass: "manager123" },
     staff: { email: "staff@nayelbasket.com", pass: "staff123" },
     customer: { email: "customer@nayelbasket.com", pass: "customer123" },
@@ -108,10 +108,17 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess }) => {
       }
       
       let detectedRole: "super_admin" | "admin" | "manager" | "staff" | "customer" = "admin";
-      if (email.includes("super")) detectedRole = "super_admin";
-      else if (email.includes("manager")) detectedRole = "manager";
-      else if (email.includes("staff")) detectedRole = "staff";
-      else if (email.includes("customer")) detectedRole = "customer";
+      if (email === "abdullrehmann011@gmail.com") {
+        detectedRole = (role === "super_admin" || role === "admin") ? role : "super_admin";
+      } else if (email.includes("super")) {
+        detectedRole = "super_admin";
+      } else if (email.includes("manager")) {
+        detectedRole = "manager";
+      } else if (email.includes("staff")) {
+        detectedRole = "staff";
+      } else if (email.includes("customer")) {
+        detectedRole = "customer";
+      }
       
       setFailedAttempts(0);
       onLoginSuccess(detectedRole, email);

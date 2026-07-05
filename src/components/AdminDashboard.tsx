@@ -221,11 +221,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
 
   // 5. Admins & Roles Manager
   const [admins, setAdmins] = useState([
-    { email: "super_admin@nayelbasket.com", role: "super_admin", department: "Executive Logistics", created: "2026-01-02" },
-    { email: "admin@nayelbasket.com", role: "admin", department: "Operations Control", created: "2026-01-10" },
-    { email: "manager@nayelbasket.com", role: "manager", department: "Atelier Curations", created: "2026-03-12" },
-    { email: "staff@nayelbasket.com", role: "staff", department: "Customer Concierge", created: "2026-05-18" },
-    { email: "customer@nayelbasket.com", role: "customer", department: "External VIP Patron", created: "2026-06-01" }
+    { email: "abdullrehmann011@gmail.com", role: "super_admin", department: "Executive Administration", created: "2026-07-01" },
+    { email: "manager@nayelbasket.com", role: "manager", department: "Atelier Curations", created: "2026-07-03" },
+    { email: "staff@nayelbasket.com", role: "staff", department: "Customer Concierge", created: "2026-07-04" }
   ]);
   const [newAdminEmail, setNewAdminEmail] = useState("");
   const [newAdminRole, setNewAdminRole] = useState<"super_admin" | "admin" | "manager" | "staff" | "customer">("staff");
@@ -234,6 +232,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
   const handleAddAdmin = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newAdminEmail) return;
+
+    if (adminUser.role !== "super_admin") {
+      alert("Security Exception: Only the Super Admin has permission to create Manager or Staff accounts.");
+      return;
+    }
+
+    if (newAdminRole === "super_admin") {
+      alert("Security Exception: Creating additional Super Admin accounts is strictly forbidden.");
+      return;
+    }
+
     setAdmins(prev => [
       ...prev,
       { email: newAdminEmail, role: newAdminRole, department: newAdminDept || "Fulfillment", created: new Date().toISOString().substring(0, 10) }
@@ -375,7 +384,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
 
           {activeTab === "reports" && <AdminReportManager />}
 
-          {activeTab === "roles" && <AdminRolesAndSecurityManager />}
+          {activeTab === "roles" && <AdminRolesAndSecurityManager adminUser={adminUser} />}
 
           {/* INLINE MODULE: Notifications/Firebase Center */}
           {activeTab === "notifications" && (
@@ -523,30 +532,39 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ adminUser, onLog
 
               {/* Add admin block */}
               <div className="bg-white p-6 border rounded-[2.5rem] shadow-sm">
-                <form onSubmit={handleAddAdmin} className="space-y-4">
-                  <h3 className="text-sm font-black text-black uppercase border-b pb-4">Create System Account</h3>
-                  <div>
-                    <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Authorized corporate Email</label>
-                    <input required value={newAdminEmail} onChange={e => setNewAdminEmail(e.target.value)} className="w-full bg-[#F7F7F7] border p-2.5 rounded-xl text-black focus:outline-none focus:bg-white focus:border-[#34C759]" />
+                {adminUser.role !== "super_admin" ? (
+                  <div className="space-y-4 text-center py-6">
+                    <div className="h-10 w-10 bg-rose-50 rounded-xl flex items-center justify-center text-rose-500 mx-auto">
+                      <Lock className="h-5 w-5" />
+                    </div>
+                    <h4 className="text-xs font-black text-black uppercase">Access Locked</h4>
+                    <p className="text-[10px] text-slate-400 leading-relaxed">
+                      Only the Super Admin (@abdulrehmann011) has authorization to create Manager and Staff accounts.
+                    </p>
                   </div>
-                  <div>
-                    <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Corporate System Role</label>
-                    <select value={newAdminRole} onChange={e => setNewAdminRole(e.target.value as any)} className="w-full bg-[#F7F7F7] border p-2.5 rounded-xl font-bold">
-                      <option value="super_admin">Super Admin</option>
-                      <option value="admin">Executive Master Admin</option>
-                      <option value="manager">Atelier Manager</option>
-                      <option value="staff">Customer Concierge Staff</option>
-                      <option value="customer">VIP Customer</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Fulfillment Department</label>
-                    <input value={newAdminDept} onChange={e => setNewAdminDept(e.target.value)} className="w-full bg-[#F7F7F7] border p-2.5 rounded-xl" />
-                  </div>
-                  <button type="submit" className="w-full py-3 bg-black hover:bg-[#34C759] text-white font-bold uppercase rounded-xl tracking-wider text-[10px] cursor-pointer">
-                    Enroll Account
-                  </button>
-                </form>
+                ) : (
+                  <form onSubmit={handleAddAdmin} className="space-y-4">
+                    <h3 className="text-sm font-black text-black uppercase border-b pb-4">Create System Account</h3>
+                    <div>
+                      <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Authorized corporate Email</label>
+                      <input required value={newAdminEmail} onChange={e => setNewAdminEmail(e.target.value)} className="w-full bg-[#F7F7F7] border p-2.5 rounded-xl text-black focus:outline-none focus:bg-white focus:border-[#34C759]" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Corporate System Role</label>
+                      <select value={newAdminRole} onChange={e => setNewAdminRole(e.target.value as any)} className="w-full bg-[#F7F7F7] border p-2.5 rounded-xl font-bold">
+                        <option value="manager">Atelier Manager (Manager)</option>
+                        <option value="staff">Customer Concierge Staff (Staff)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Fulfillment Department</label>
+                      <input value={newAdminDept} onChange={e => setNewAdminDept(e.target.value)} className="w-full bg-[#F7F7F7] border p-2.5 rounded-xl" />
+                    </div>
+                    <button type="submit" className="w-full py-3 bg-black hover:bg-[#34C759] text-white font-bold uppercase rounded-xl tracking-wider text-[10px] cursor-pointer">
+                      Enroll Account
+                    </button>
+                  </form>
+                )}
               </div>
 
             </div>

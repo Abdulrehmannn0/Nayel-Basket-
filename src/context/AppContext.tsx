@@ -108,12 +108,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [rewardPoints, setRewardPoints] = useState<number>(() => {
     const saved = localStorage.getItem("nb_rewards");
-    return saved ? parseInt(saved, 10) : 250; // start with some points
+    return saved ? parseInt(saved, 10) : 0; // start with 0 points as requested
   });
 
   const [walletBalance, setWalletBalance] = useState<number>(() => {
     const saved = localStorage.getItem("nb_wallet");
-    return saved ? parseFloat(saved) : 150.00; // start with standard balance
+    return saved ? parseFloat(saved) : 0.00; // start with $0.00 balance as requested
   });
 
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);

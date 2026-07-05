@@ -50,11 +50,21 @@ export const AdminCustomerManager: React.FC<CustomerManagerProps> = ({
   const [pointAmt, setPointAmt] = useState("100");
 
   const [customers, setCustomers] = useState<SimulatedCustomer[]>([
-    { id: "cust_1", name: "Alex Rivera", email: "alex.rivera@gmail.com", phone: "+1 (555) 321-9876", joinedDate: "2026-01-15", wallet: 150.00, rewards: 250, city: "San Francisco, CA", avatar: "A", tier: "VIP Patron" },
+    { id: "cust_1", name: "Abdul Rehman", email: "abdullrehmann011@gmail.com", phone: "+1 (555) 321-9876", joinedDate: "2026-07-01", wallet: walletBalance, rewards: rewardPoints, city: "Lahore, Pakistan", avatar: "A", tier: "VIP Patron" },
     { id: "cust_2", name: "Sophia Loren", email: "sophia@lorenarchitects.com", phone: "+1 (555) 890-1234", joinedDate: "2026-03-02", wallet: 420.00, rewards: 850, city: "Los Angeles, CA", avatar: "S", tier: "Elite Collector" },
     { id: "cust_3", name: "Julian Rivera", email: "julian@riveradesigns.co", phone: "+1 (555) 543-2109", joinedDate: "2026-04-10", wallet: 75.00, rewards: 120, city: "New York, NY", avatar: "J", tier: "Standard" },
     { id: "cust_4", name: "Marc Jacobs", email: "marc@jacobsdecor.net", phone: "+1 (555) 888-9999", joinedDate: "2026-05-22", wallet: 1250.00, rewards: 3400, city: "Chicago, IL", avatar: "M", tier: "VIP Patron" }
   ]);
+
+  // Keep simulated user row updated when props change
+  React.useEffect(() => {
+    setCustomers(prev => prev.map(c => {
+      if (c.id === "cust_1") {
+        return { ...c, wallet: walletBalance, rewards: rewardPoints };
+      }
+      return c;
+    }));
+  }, [walletBalance, rewardPoints]);
 
   // Adjust Wallet Balance
   const handleAdjustFunds = (isAdd: boolean) => {
@@ -64,7 +74,7 @@ export const AdminCustomerManager: React.FC<CustomerManagerProps> = ({
 
     const finalDelta = isAdd ? delta : -delta;
 
-    // If adjusting the logged in user (Alex Rivera), synchronize with standard wallet context!
+    // If adjusting the logged in user (Abdul Rehman), synchronize with standard wallet context!
     if (selectedCust.id === "cust_1") {
       addWalletFunds(finalDelta);
     }

@@ -8,8 +8,28 @@ import { createClient } from "@supabase/supabase-js";
 import { Product, Order, CartItem, Address, Review, Coupon, AppNotification, WalletTransaction } from "../types";
 
 // Read Supabase environment variables safely
-const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL || "";
+const rawSupabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL || "";
 const supabaseAnonKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || "";
+
+/**
+ * Sanitizes the Supabase URL by removing trailing slashes and common API suffixes like /rest/v1
+ */
+export function sanitizeSupabaseUrl(url: string): string {
+  if (!url) return "";
+  let sanitized = url.trim();
+  while (sanitized.endsWith("/")) {
+    sanitized = sanitized.slice(0, -1);
+  }
+  if (sanitized.endsWith("/rest/v1")) {
+    sanitized = sanitized.slice(0, -8);
+  }
+  while (sanitized.endsWith("/")) {
+    sanitized = sanitized.slice(0, -1);
+  }
+  return sanitized;
+}
+
+const supabaseUrl = sanitizeSupabaseUrl(rawSupabaseUrl);
 
 /**
  * Validates if the Supabase credentials are valid and not default placeholder strings
@@ -90,8 +110,69 @@ export async function signUpUser(email: string, pass: string, name: string, phon
 export async function signInUser(email: string, pass: string) {
   if (!supabase) return { data: null, error: new Error("Supabase is not configured.") };
   try {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
+    let { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
+    
+    // Auto-provision if user is the designated admin but does not exist in Auth yet
+    if (error && email === "abdullrehmann011@gmail.com" && (error.message?.toLowerCase().includes("invalid login credentials") || error.status === 400)) {
+      console.log("Admin account not found. Initiating secure automatic auto-provisioning...");
+      
+      // 1. Sign up the user in Supabase Auth
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password: pass,
+        options: {
+          data: { full_name: "Abdul Rehman", phone_number: "+1 (555) 321-9876" }
+        }
+      });
+      
+      if (!signUpError && signUpData?.user) {
+        console.log("Admin user signed up successfully. Creating database records...");
+        
+        // 2. Insert profile into public.users table (using upsert to ignore duplicate keys safely)
+        await supabase.from("users").upsert({
+          id: signUpData.user.id,
+          email: email,
+          name: "Abdul Rehman",
+          phone: "+1 (555) 321-9876",
+          role: "admin"
+        });
+        
+        // 3. Insert role into public.admins table
+        await supabase.from("admins").upsert({
+          id: signUpData.user.id,
+          role: "super_admin",
+          permissions: ["all"]
+        });
+        
+        // 4. Retry signing in immediately
+        const retry = await supabase.auth.signInWithPassword({ email, password: pass });
+        if (!retry.error) {
+          data = retry.data;
+          error = null;
+        }
+      }
+    }
+    
     if (error) throw error;
+
+    // After successful login, make sure public profiles and roles are created for the designated admin
+    if (data?.user && email === "abdullrehmann011@gmail.com") {
+      console.log("Ensuring database roles exist for successful admin login...");
+      await supabase.from("users").upsert({
+        id: data.user.id,
+        email: email,
+        name: "Abdul Rehman",
+        phone: "+1 (555) 321-9876",
+        role: "admin"
+      });
+      
+      await supabase.from("admins").upsert({
+        id: data.user.id,
+        role: "super_admin",
+        permissions: ["all"]
+      });
+    }
+
     return { data, error: null };
   } catch (err: any) {
     return { data: null, error: err };

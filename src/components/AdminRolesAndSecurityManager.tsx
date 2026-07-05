@@ -53,43 +53,45 @@ interface LoginLog {
   ipAddress: string;
 }
 
-export const AdminRolesAndSecurityManager: React.FC = () => {
+interface AdminRolesAndSecurityManagerProps {
+  adminUser?: {
+    email: string;
+    role: "super_admin" | "admin" | "manager" | "staff" | "customer";
+  };
+}
+
+export const AdminRolesAndSecurityManager: React.FC<AdminRolesAndSecurityManagerProps> = ({ adminUser }) => {
   const [activeTab, setActiveTab] = useState<"roles" | "passkeys" | "sessions" | "history">("roles");
   const [searchTerm, setSearchTerm] = useState("");
   const [isSyncing, setIsSyncing] = useState(false);
 
+  const userRole = adminUser?.role || "super_admin";
+
   // 1. Core Users state (seeded securely from local persistence if available, else standard roster)
   const [users, setUsers] = useState<UserAccount[]>(() => {
-    const saved = localStorage.getItem("nb_system_users");
+    const saved = localStorage.getItem("nb_system_users_v2");
     if (saved) return JSON.parse(saved);
     return [
-      { id: "usr_1", name: "Alexander Sovereign", email: "super_admin@nayelbasket.com", role: "super_admin", department: "Executive Logistics", mfaEnabled: true, passkeyRegistered: true, created: "2026-01-02" },
-      { id: "usr_2", name: "Amelia Dupont", email: "admin@nayelbasket.com", role: "admin", department: "Operations Control", mfaEnabled: true, passkeyRegistered: false, created: "2026-01-10" },
-      { id: "usr_3", name: "Marcus Atelier", email: "manager@nayelbasket.com", role: "manager", department: "Creative Curation", mfaEnabled: false, passkeyRegistered: true, created: "2026-03-12" },
-      { id: "usr_4", name: "Sarah Connor", email: "staff@nayelbasket.com", role: "staff", department: "Customer Support", mfaEnabled: false, passkeyRegistered: false, created: "2026-05-18" },
-      { id: "usr_5", name: "John Doe", email: "customer@nayelbasket.com", role: "customer", department: "External VIP Patron", mfaEnabled: false, passkeyRegistered: false, created: "2026-06-01" }
+      { id: "usr_1", name: "Abdul Rehman", email: "abdullrehmann011@gmail.com", role: "super_admin", department: "Executive Administration", mfaEnabled: true, passkeyRegistered: true, created: "2026-07-01" },
+      { id: "usr_3", name: "Marcus Atelier", email: "manager@nayelbasket.com", role: "manager", department: "Creative Curation", mfaEnabled: false, passkeyRegistered: true, created: "2026-07-03" },
+      { id: "usr_4", name: "Sarah Connor", email: "staff@nayelbasket.com", role: "staff", department: "Customer Support", mfaEnabled: false, passkeyRegistered: false, created: "2026-07-04" }
     ];
   });
 
   useEffect(() => {
-    localStorage.setItem("nb_system_users", JSON.stringify(users));
+    localStorage.setItem("nb_system_users_v2", JSON.stringify(users));
   }, [users]);
 
   // 2. Active Session Management state
   const [sessions, setSessions] = useState<ActiveSession[]>([
     { id: "sess_1", device: "MacBook Pro M3 Max", browser: "Chrome 126", ip: "104.28.32.122", location: "San Francisco, USA", isCurrent: true, lastActive: "Active Now" },
-    { id: "sess_2", device: "iPhone 15 Pro", browser: "Mobile Safari 17", ip: "172.56.21.90", location: "New York, USA", isCurrent: false, lastActive: "15 minutes ago" },
-    { id: "sess_3", device: "iPad Pro", browser: "Chrome iOS", ip: "172.56.21.92", location: "New York, USA", isCurrent: false, lastActive: "2 hours ago" },
-    { id: "sess_4", device: "Windows 11 PC", browser: "Firefox Enterprise", ip: "84.21.144.18", location: "London, UK", isCurrent: false, lastActive: "1 day ago" }
+    { id: "sess_2", device: "iPhone 15 Pro", browser: "Mobile Safari 17", ip: "172.56.21.90", location: "New York, USA", isCurrent: false, lastActive: "15 minutes ago" }
   ]);
 
   // 3. Complete authentication ledgers state
   const [loginLogs, setLoginLogs] = useState<LoginLog[]>([
-    { timestamp: "2026-07-01 12:44:12", email: "super_admin@nayelbasket.com", role: "super_admin", method: "Passkey (FaceID)", status: "Success", ipAddress: "104.28.32.122" },
-    { timestamp: "2026-07-01 12:30:15", email: "admin@nayelbasket.com", role: "admin", method: "Password", status: "Success", ipAddress: "172.56.21.90" },
-    { timestamp: "2026-07-01 11:15:00", email: "admin@nayelbasket.com", role: "admin", method: "Password", status: "Failed", ipAddress: "172.56.21.90" },
-    { timestamp: "2026-07-01 09:22:11", email: "manager@nayelbasket.com", role: "manager", method: "Passkey (Fingerprint)", status: "Success", ipAddress: "84.21.144.18" },
-    { timestamp: "2026-06-30 18:40:55", email: "staff@nayelbasket.com", role: "staff", method: "Password", status: "Success", ipAddress: "185.120.44.12" }
+    { timestamp: "2026-07-01 12:44:12", email: "abdullrehmann011@gmail.com", role: "super_admin", method: "Passkey (FaceID)", status: "Success", ipAddress: "104.28.32.122" },
+    { timestamp: "2026-07-01 09:22:11", email: "manager@nayelbasket.com", role: "manager", method: "Passkey (Fingerprint)", status: "Success", ipAddress: "84.21.144.18" }
   ]);
 
   // Form states for creating accounts
@@ -102,6 +104,16 @@ export const AdminRolesAndSecurityManager: React.FC = () => {
   const handleAddUser = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newName || !newEmail) return;
+
+    if (userRole !== "super_admin") {
+      alert("Security Exception: Only the Super Admin has permission to create Manager or Staff accounts.");
+      return;
+    }
+
+    if (newRole === "super_admin") {
+      alert("Security Exception: Creating additional Super Admin accounts is strictly forbidden.");
+      return;
+    }
 
     const exists = users.find(u => u.email.toLowerCase() === newEmail.toLowerCase());
     if (exists) {
@@ -353,66 +365,75 @@ export const AdminRolesAndSecurityManager: React.FC = () => {
           {/* Enroll user block */}
           <div className="space-y-6">
             <div className="bg-white p-6 border rounded-[2.5rem] shadow-sm">
-              <form onSubmit={handleAddUser} className="space-y-4">
-                <h3 className="text-sm font-black text-black uppercase border-b pb-4">Enroll Corporate Identity</h3>
-                
-                {msg && (
-                  <div className="bg-[#34C759]/10 text-[#34C759] border border-[#34C759]/20 p-2.5 rounded-xl font-bold font-mono text-[10px] text-center">
-                    {msg}
+              {userRole !== "super_admin" ? (
+                <div className="space-y-4 text-center py-6">
+                  <div className="h-10 w-10 bg-rose-50 rounded-xl flex items-center justify-center text-rose-500 mx-auto">
+                    <Lock className="h-5 w-5" />
                   </div>
-                )}
+                  <h4 className="text-xs font-black text-black uppercase">Access Locked</h4>
+                  <p className="text-[10px] text-slate-400 leading-relaxed">
+                    Only the Super Admin (@abdulrehmann011) has authorization to create Manager and Staff accounts.
+                  </p>
+                </div>
+              ) : (
+                <form onSubmit={handleAddUser} className="space-y-4">
+                  <h3 className="text-sm font-black text-black uppercase border-b pb-4">Enroll Corporate Identity</h3>
+                  
+                  {msg && (
+                    <div className="bg-[#34C759]/10 text-[#34C759] border border-[#34C759]/20 p-2.5 rounded-xl font-bold font-mono text-[10px] text-center">
+                      {msg}
+                    </div>
+                  )}
 
-                <div>
-                  <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Corporate Full Name</label>
-                  <input 
-                    required 
-                    value={newName} 
-                    onChange={e => setNewName(e.target.value)} 
-                    placeholder="e.g. Robert Smith"
-                    className="w-full bg-[#F7F7F7] border p-2.5 rounded-xl focus:outline-none focus:bg-white focus:border-[#34C759] text-black font-semibold" 
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Corporate Email Address</label>
-                  <input 
-                    required 
-                    type="email"
-                    value={newEmail} 
-                    onChange={e => setNewEmail(e.target.value)} 
-                    placeholder="e.g. robert@nayelbasket.com"
-                    className="w-full bg-[#F7F7F7] border p-2.5 rounded-xl focus:outline-none focus:bg-white focus:border-[#34C759] text-black font-mono" 
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Assigned Security Role</label>
-                  <select 
-                    value={newRole} 
-                    onChange={e => setNewRole(e.target.value as SystemRole)} 
-                    className="w-full bg-[#F7F7F7] border p-2.5 rounded-xl font-bold cursor-pointer"
+                  <div>
+                    <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Corporate Full Name</label>
+                    <input 
+                      required 
+                      value={newName} 
+                      onChange={e => setNewName(e.target.value)} 
+                      placeholder="e.g. Robert Smith"
+                      className="w-full bg-[#F7F7F7] border p-2.5 rounded-xl focus:outline-none focus:bg-white focus:border-[#34C759] text-black font-semibold" 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Corporate Email Address</label>
+                    <input 
+                      required 
+                      type="email"
+                      value={newEmail} 
+                      onChange={e => setNewEmail(e.target.value)} 
+                      placeholder="e.g. robert@nayelbasket.com"
+                      className="w-full bg-[#F7F7F7] border p-2.5 rounded-xl focus:outline-none focus:bg-white focus:border-[#34C759] text-black font-mono" 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Assigned Security Role</label>
+                    <select 
+                      value={newRole} 
+                      onChange={e => setNewRole(e.target.value as SystemRole)} 
+                      className="w-full bg-[#F7F7F7] border p-2.5 rounded-xl font-bold cursor-pointer"
+                    >
+                      <option value="manager">Manager (Curation Lead)</option>
+                      <option value="staff">Staff (Concierge Representative)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Fulfillment Department</label>
+                    <input 
+                      value={newDept} 
+                      onChange={e => setNewDept(e.target.value)} 
+                      placeholder="e.g. Logistics Center"
+                      className="w-full bg-[#F7F7F7] border p-2.5 rounded-xl text-black" 
+                    />
+                  </div>
+                  <button 
+                    type="submit" 
+                    className="w-full py-3 bg-black hover:bg-[#34C759] text-white font-bold uppercase rounded-xl tracking-wider transition-all cursor-pointer text-[10px]"
                   >
-                    <option value="super_admin">Super Admin (Executive Controls)</option>
-                    <option value="admin">Admin (Operations Manager)</option>
-                    <option value="manager">Manager (Curation Lead)</option>
-                    <option value="staff">Staff (Concierge Representative)</option>
-                    <option value="customer">Customer (VIP Patron)</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Fulfillment Department</label>
-                  <input 
-                    value={newDept} 
-                    onChange={e => setNewDept(e.target.value)} 
-                    placeholder="e.g. Logistics Center"
-                    className="w-full bg-[#F7F7F7] border p-2.5 rounded-xl text-black" 
-                  />
-                </div>
-                <button 
-                  type="submit" 
-                  className="w-full py-3 bg-black hover:bg-[#34C759] text-white font-bold uppercase rounded-xl tracking-wider transition-all cursor-pointer text-[10px]"
-                >
-                  Create System Account
-                </button>
-              </form>
+                    Create System Account
+                  </button>
+                </form>
+              )}
             </div>
 
             {/* Permissions Matrix helper */}

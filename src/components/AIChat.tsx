@@ -47,7 +47,7 @@ export const AIChat: React.FC = () => {
       {
         id: "welcome",
         sender: "ai",
-        text: "Greetings! I am the **Nayel Basket AI Concierge** – your private digital interior designer, styling consultant, and decor specialist. \n\nHow can I help you elevate your home today? Here is what I can assist you with right now:",
+        text: "Namaste! Aapka swagat hai Nayel Basket mein. Main aapka shopping expert hoon. 😊🛍️\n\nAapko apne ghar ke liye kya chahiye? Sofa, lightings, kitchenware ya beautiful wall decor? Mujhe bataiye, main aapki choice aur budget ke hisaab se best options suggest karunga!",
         timestamp: new Date().toISOString()
       }
     ];
@@ -184,11 +184,11 @@ export const AIChat: React.FC = () => {
       speakResponse(textResponse);
     } catch (err: any) {
       console.error("AIChat API Error:", err);
-      const friendlyErrorText = `⚠️ **Nayel Basket Styling Concierge is Temporarily Offline**
+      const friendlyErrorText = `⚠️ **Nayel Basket Shopping Assistant is Offline**
 
-We are having trouble communicating with the Gemini API to construct your luxury styling guidance. This is usually due to a missing or inactive \`GEMINI_API_KEY\` in **Settings > Secrets** or a temporary network disruption.
+Lagta hai internet mein thodi dikkat hai! 🌐 Humare servers abhi response nahi de pa rahe hain.
 
-Please make sure your API key is correctly configured and click the **Retry** button below to resend your query.`;
+Please check kijiye ki aapka \`GEMINI_API_KEY\` correctly set up hai (Settings > Secrets mein) aur fir se **Retry** button click kijiye! 😊`;
 
       setMessages((prev) => [
         ...prev,
@@ -379,7 +379,7 @@ Please make sure your API key is correctly configured and click the **Retry** bu
           </div>
           <h2 className="text-lg font-bold">Gemini 3.5 Flash</h2>
           <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
-            Premium interior styling AI trained on Nayel Basket's catalog, space layout rules, and colorway coordination.
+            Friendly shopping assistant trained on Nayel Basket's live catalog to help you choose the best products within your budget.
           </p>
         </div>
 
@@ -488,7 +488,7 @@ Please make sure your API key is correctly configured and click the **Retry** bu
                   {
                     id: "welcome",
                     sender: "ai",
-                    text: "Greetings! I am the **Nayel Basket AI Concierge** – your private digital interior designer, styling consultant, and decor specialist. \n\nHow can I help you elevate your home today? Here is what I can assist you with right now:",
+                    text: "Namaste! Aapka swagat hai Nayel Basket mein. Main aapka shopping expert hoon. 😊🛍️\n\nAapko apne ghar ke liye kya chahiye? Sofa, lightings, kitchenware ya beautiful wall decor? Mujhe bataiye, main aapki choice aur budget ke hisaab se best options suggest karunga!",
                     timestamp: new Date().toISOString()
                   }
                 ];

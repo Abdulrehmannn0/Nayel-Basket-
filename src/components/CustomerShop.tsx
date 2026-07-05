@@ -1872,11 +1872,18 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
               👤
             </div>
             <div>
-              <span className="text-[8px] bg-[#22C55E]/10 text-[#22C55E] border border-[#22C55E]/20 px-2 py-0.5 rounded-full font-bold uppercase font-sans tracking-widest">
-                Elite Ambassador
-              </span>
-              <h2 className="text-lg font-black text-neutral-950 dark:text-white uppercase mt-1">Nayel Patron</h2>
-              <p className="text-[10px] text-slate-400">patron@nayelbasket.luxury</p>
+              <div className="flex flex-wrap gap-1 items-center">
+                <span className="text-[8px] bg-[#22C55E]/10 text-[#22C55E] border border-[#22C55E]/20 px-2 py-0.5 rounded-full font-bold uppercase font-sans tracking-widest">
+                  Super Admin & Founder
+                </span>
+                <span className="text-[8px] bg-emerald-500 text-white px-2 py-0.5 rounded-full font-bold uppercase font-sans tracking-widest">
+                  Verified
+                </span>
+              </div>
+              <h2 className="text-lg font-black text-neutral-950 dark:text-white uppercase mt-1">Abdul Rehman</h2>
+              <p className="text-[10px] text-slate-400 font-mono">@abdulrehmann011</p>
+              <p className="text-[10px] text-slate-400">abdullrehmann011@gmail.com</p>
+              <p className="text-[9px] text-slate-400 mt-1 font-medium">Member Since: July 2026</p>
             </div>
           </div>
 
@@ -1935,7 +1942,7 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
             {activeProfileTab === "dashboard" && (
               <div className="space-y-4">
                 <div className="bg-slate-50 dark:bg-[#1A1A1A] p-4.5 rounded-2xl border border-neutral-100 dark:border-neutral-850 space-y-2 text-xs">
-                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block font-sans">Patron benefits</span>
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block font-sans">Super Admin benefits</span>
                   <h4 className="text-xs font-bold text-neutral-900 dark:text-white uppercase">24/7 Digital Concierge Ready</h4>
                   <p className="text-[10px] text-slate-500 dark:text-slate-400 font-light leading-relaxed">
                     Stylists are available dynamically to coordinate spatial maps, layout suggestions, or custom upholstery parameters.
@@ -2074,7 +2081,7 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                     <h4 className="font-bold uppercase text-neutral-900 dark:text-white pb-1 border-b">Configure New Node</h4>
                     <div className="grid grid-cols-2 gap-2">
                       <input
-                        placeholder="Patron Full Name"
+                        placeholder="Full Name"
                         className="bg-white dark:bg-[#202020] border rounded-lg p-2 focus:outline-none"
                         value={newAddrName}
                         onChange={(e) => setNewAddrName(e.target.value)}
@@ -2215,7 +2222,7 @@ export const CustomerShop: React.FC<CustomerShopProps> = ({
                   <div className="flex justify-between items-start">
                     <div>
                       <span className="text-[8px] bg-[#22C55E]/10 text-[#22C55E] border border-[#22C55E]/20 px-2.5 py-0.5 rounded-full font-bold uppercase tracking-widest block w-max">
-                        VIP Patron Rewards
+                        VIP Member Rewards
                       </span>
                       <h3 className="text-xs font-black uppercase mt-1">Ambassador Network</h3>
                     </div>
